@@ -5,7 +5,6 @@ const photos = ref([])
 const selectedLookup = ref({})
 const jumpLat = ref('')
 const jumpLon = ref('')
-const jumpZoom = ref('13')
 
 let map = null
 const markers = new Map()
@@ -61,13 +60,11 @@ const downloadSelection = () => {
 const jumpToCoordinates = () => {
   const lat = Number.parseFloat(jumpLat.value)
   const lon = Number.parseFloat(jumpLon.value)
-  const zoom = Number.parseInt(jumpZoom.value, 10)
-
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
     return
   }
 
-  map.setView([lat, lon], Number.isFinite(zoom) ? zoom : map.getZoom())
+  map.setView([lat, lon], map.getZoom())
 }
 
 const initMap = () => {
@@ -120,7 +117,6 @@ onMounted(async () => {
     <div class="controls">
       <input v-model="jumpLat" placeholder="lat" aria-label="Latitude" />
       <input v-model="jumpLon" placeholder="lon" aria-label="Longitude" />
-      <input v-model="jumpZoom" placeholder="z" aria-label="Zoom" />
       <button
         type="button"
         class="icon"
