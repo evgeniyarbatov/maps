@@ -121,14 +121,38 @@ onMounted(async () => {
       <input v-model="jumpLat" placeholder="lat" aria-label="Latitude" />
       <input v-model="jumpLon" placeholder="lon" aria-label="Longitude" />
       <input v-model="jumpZoom" placeholder="z" aria-label="Zoom" />
-      <button type="button" class="icon" title="Jump" @click="jumpToCoordinates">
-        ↗
+      <button
+        type="button"
+        class="icon"
+        title="Jump"
+        aria-label="Jump"
+        @click="jumpToCoordinates"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M7 17L17 7M9 7h8v8" />
+        </svg>
       </button>
-      <button type="button" class="icon" title="Download" @click="downloadSelection">
-        ↓
+      <button
+        type="button"
+        class="icon"
+        title="Download"
+        aria-label="Download"
+        @click="downloadSelection"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 5v10M8 11l4 4 4-4M5 19h14" />
+        </svg>
       </button>
-      <button type="button" class="icon" title="Clear" @click="clearSelection">
-        ×
+      <button
+        type="button"
+        class="icon"
+        title="Clear"
+        aria-label="Clear selection"
+        @click="clearSelection"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M6 6l12 12M18 6l-12 12" />
+        </svg>
       </button>
     </div>
   </div>
