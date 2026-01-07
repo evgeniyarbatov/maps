@@ -31,8 +31,8 @@ lint: format
 		echo "No Python files"; \
 	fi
 
-script:
-	@$(PYTHON) $(SCRIPTS_DIR)/script.py
+extract-photos:
+	@$(PYTHON) $(SCRIPTS_DIR)/extract_photo_locations.py --input $(INPUT_DIR) --output site/public/photos.json --thumbs-dir site/public/thumbs
 
 cleanvenv:
 	@rm -rf $(VENV_PATH)
