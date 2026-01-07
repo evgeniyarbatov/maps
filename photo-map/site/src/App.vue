@@ -5,8 +5,10 @@ const photos = ref([])
 const selectedLookup = ref({})
 const jumpCoords = ref('')
 const JUMP_ZOOM = 17
+const JUMP_PANE = 'jump-pane'
 
 let map = null
+let jumpMarker = null
 const markers = new Map()
 
 const makeIcon = (photo, selected) =>
@@ -66,6 +68,19 @@ const jumpToCoordinates = () => {
   }
 
   map.setView([lat, lon], JUMP_ZOOM)
+  if (jumpMarker) {
+    jumpMarker.setLatLng([lat, lon])
+  } else {
+    jumpMarker = window.L.circleMarker([lat, lon], {
+      pane: JUMP_PANE,
+      radius: 9,
+      color: '#ffffff',
+      weight: 3,
+      fillColor: '#e07a26',
+      fillOpacity: 1,
+    }).addTo(map)
+  }
+  jumpMarker.bringToFront()
 }
 
 const initMap = () => {
@@ -75,6 +90,10 @@ const initMap = () => {
   }).setView([0, 0], 2)
 
   window.L.control.zoom({ position: 'bottomright' }).addTo(map)
+  if (!map.getPane(JUMP_PANE)) {
+    map.createPane(JUMP_PANE)
+    map.getPane(JUMP_PANE).style.zIndex = 650
+  }
 
   window.L
     .tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
