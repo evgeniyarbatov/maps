@@ -3,8 +3,8 @@ import { onMounted, ref } from 'vue'
 
 const photos = ref([])
 const selectedLookup = ref({})
-const jumpLat = ref('')
-const jumpLon = ref('')
+const jumpCoords = ref('')
+const JUMP_ZOOM = 17
 
 let map = null
 const markers = new Map()
@@ -58,13 +58,14 @@ const downloadSelection = () => {
 }
 
 const jumpToCoordinates = () => {
-  const lat = Number.parseFloat(jumpLat.value)
-  const lon = Number.parseFloat(jumpLon.value)
+  const [latValue, lonValue] = jumpCoords.value.split(',').map((item) => item.trim())
+  const lat = Number.parseFloat(latValue)
+  const lon = Number.parseFloat(lonValue)
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
     return
   }
 
-  map.setView([lat, lon], map.getZoom())
+  map.setView([lat, lon], JUMP_ZOOM)
 }
 
 const initMap = () => {
@@ -115,8 +116,7 @@ onMounted(async () => {
   <div class="app">
     <div id="map"></div>
     <div class="controls">
-      <input v-model="jumpLat" placeholder="lat" aria-label="Latitude" />
-      <input v-model="jumpLon" placeholder="lon" aria-label="Longitude" />
+      <input v-model="jumpCoords" placeholder="lat,lon" aria-label="Latitude, Longitude" />
       <button
         type="button"
         class="icon"
