@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import shutil
 from pathlib import Path
 
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".tif", ".tiff"}
@@ -12,7 +11,10 @@ THUMB_SIZE = 256
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Extract GPS coordinates and thumbnails from a directory of photos."
+        description=(
+            "Extract GPS coordinates and thumbnails from a directory of photos, "
+            "symlinking originals into the public directory."
+        )
     )
     parser.add_argument("--input", required=True, help="Directory with photo files")
     parser.add_argument(
@@ -28,7 +30,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--originals-dir",
         default="site/public/photos",
-        help="Directory to copy original images",
+        help="Directory to symlink original images",
     )
     return parser.parse_args()
 
@@ -87,7 +89,9 @@ def build_photo_entry(
 
     original_path = originals_dir / rel_path
     original_path.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(path, original_path)
+    if original_path.exists() or original_path.is_symlink():
+        original_path.unlink()
+    original_path.symlink_to(path.resolve())
 
     thumb_url = "/" + thumb_path.relative_to(public_dir).as_posix()
     original_url = "/" + original_path.relative_to(public_dir).as_posix()

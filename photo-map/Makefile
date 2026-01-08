@@ -21,7 +21,16 @@ run:
 	cd $(SITE_DIR) && npm run dev
 
 extract-photos:
-	@$(PYTHON) $(SCRIPTS_DIR)/extract_photo_locations.py --input $(INPUT_DIR) --output site/public/photos.json --thumbs-dir site/public/thumbs
+	@$(PYTHON) $(SCRIPTS_DIR)/extract_photo_locations.py \
+	--input $(INPUT_DIR) \
+	--output site/public/photos.json \
+	--thumbs-dir site/public/thumbs
+
+clean:
+	@rm -rf \
+	site/public/thumbs \
+	site/public/photos \
+	site/public/photos.json
 
 cleanvenv:
 	@rm -rf $(VENV_PATH)

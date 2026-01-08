@@ -1,4 +1,5 @@
 <script setup>
+import { zipSync } from 'fflate'
 import { onMounted, ref } from 'vue'
 
 const photos = ref([])
@@ -44,9 +45,14 @@ const clearSelection = () => {
   })
 }
 
-const downloadSelection = () => {
-  Object.keys(selectedLookup.value).forEach((photoId) => {
-    const photo = photos.value.find((item) => item.id === photoId)
+const downloadSelection = async () => {
+  const selectedIds = Object.keys(selectedLookup.value)
+  if (!selectedIds.length) {
+    return
+  }
+
+  if (selectedIds.length === 1) {
+    const photo = photos.value.find((item) => item.id === selectedIds[0])
     if (!photo) {
       return
     }
@@ -56,7 +62,38 @@ const downloadSelection = () => {
     document.body.appendChild(link)
     link.click()
     link.remove()
-  })
+    return
+  }
+
+  const files = await Promise.all(
+    selectedIds.map(async (photoId) => {
+      const photo = photos.value.find((item) => item.id === photoId)
+      if (!photo) {
+        return null
+      }
+      const response = await fetch(photo.original)
+      const data = new Uint8Array(await response.arrayBuffer())
+      return { name: photo.name, data }
+    })
+  )
+
+  const payload = files.reduce((acc, file) => {
+    if (file) {
+      acc[file.name] = file.data
+    }
+    return acc
+  }, {})
+
+  const zipped = zipSync(payload, { level: 0 })
+  const blob = new Blob([zipped], { type: 'application/zip' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = 'photos.zip'
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
 }
 
 const jumpToCoordinates = () => {
