@@ -1,6 +1,6 @@
 <script setup>
 import { zipSync } from 'fflate'
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 
 const photos = ref([])
 const selectedLookup = ref({})
@@ -119,6 +119,14 @@ const jumpToCoordinates = () => {
   }
   jumpMarker.bringToFront()
 }
+
+watch(jumpCoords, (value) => {
+  if (value.trim() !== '' || !jumpMarker) {
+    return
+  }
+  jumpMarker.remove()
+  jumpMarker = null
+})
 
 const initMap = () => {
   map = window.L.map('map', {
