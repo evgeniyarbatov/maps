@@ -17,14 +17,14 @@ install: venv
 	@$(PIP) install --disable-pip-version-check -q --upgrade pip
 	@$(PIP) install --disable-pip-version-check -q -r $(REQUIREMENTS)
 
-run:
-	cd $(SITE_DIR) && npm run dev
-
 extract-photos:
 	@$(PYTHON) $(SCRIPTS_DIR)/extract_photo_locations.py \
 	--input $(INPUT_DIR) \
 	--output site/public/photos.json \
 	--thumbs-dir site/public/thumbs
+
+run:
+	cd $(SITE_DIR) && npm run dev
 
 clean:
 	@rm -rf \

@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&display=swap');
 
+/* Base typography and canvas tone. */
 :root {
   font-family: 'Space Grotesk', system-ui, sans-serif;
   background-color: #f7f2e9;
@@ -10,6 +11,7 @@
   box-sizing: border-box;
 }
 
+/* Full-bleed app layout. */
 html,
 body,
 #app {
@@ -29,6 +31,7 @@ body,
   height: 100%;
 }
 
+/* Floating control pill over the map. */
 .controls {
   position: absolute;
   left: 16px;
@@ -45,6 +48,7 @@ body,
   z-index: 1000;
 }
 
+/* Coordinate input styling. */
 input {
   width: 220px;
   min-width: 64px;
@@ -62,6 +66,7 @@ input::placeholder {
   color: rgba(34, 29, 22, 0.5);
 }
 
+/* Icon-only action buttons. */
 button.icon {
   width: 32px;
   height: 32px;
@@ -92,6 +97,7 @@ button.icon svg {
   stroke-linejoin: round;
 }
 
+/* Photo thumbnail markers. */
 .thumb-marker {
   border-radius: 14px;
   overflow: hidden;
@@ -111,10 +117,12 @@ button.icon svg {
   box-shadow: 0 12px 26px rgba(224, 122, 38, 0.6);
 }
 
+/* Hide Leaflet attribution for a cleaner UI. */
 .leaflet-control-attribution {
   display: none;
 }
 
+/* Stack controls on small screens. */
 @media (max-width: 720px) {
   .controls {
     left: 12px;

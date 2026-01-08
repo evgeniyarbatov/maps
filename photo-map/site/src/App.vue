@@ -2,16 +2,22 @@
 import { zipSync } from 'fflate'
 import { onMounted, ref, watch } from 'vue'
 
+// Reactive state for photo data, selection, and jump input.
 const photos = ref([])
 const selectedLookup = ref({})
 const jumpCoords = ref('')
-const JUMP_ZOOM = 17
+// Layout and marker constants to keep spatial behavior consistent.
+const JUMP_ZOOM = 20
 const JUMP_PANE = 'jump-pane'
+const MARKER_SPACING = 80
+const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5))
 
+// Leaflet runtime references.
 let map = null
 let jumpMarker = null
 const markers = new Map()
 
+// Build a thumbnail marker with an optional selected style.
 const makeIcon = (photo, selected) =>
   window.L.divIcon({
     className: `thumb-marker${selected ? ' is-selected' : ''}`,
@@ -20,6 +26,7 @@ const makeIcon = (photo, selected) =>
     iconAnchor: [36, 36],
   })
 
+// Refresh a single marker's icon based on selection state.
 const updateMarker = (photoId) => {
   const marker = markers.get(photoId)
   const photo = photos.value.find((item) => item.id === photoId)
@@ -29,6 +36,67 @@ const updateMarker = (photoId) => {
   marker.setIcon(makeIcon(photo, Boolean(selectedLookup.value[photoId])))
 }
 
+// Spread items around a center using a golden-angle spiral.
+const getSpiralOffset = (index) => {
+  if (index === 0) {
+    return { x: 0, y: 0 }
+  }
+  const radius = MARKER_SPACING * Math.sqrt(index)
+  const angle = index * GOLDEN_ANGLE
+  return { x: radius * Math.cos(angle), y: radius * Math.sin(angle) }
+}
+
+// Group nearby markers into layout clusters in pixel space.
+const buildClusters = () => {
+  const clusters = []
+
+  photos.value.forEach((photo) => {
+    const point = map.latLngToLayerPoint([photo.lat, photo.lon])
+    let cluster = clusters.find((item) => item.center.distanceTo(point) < MARKER_SPACING)
+
+    if (!cluster) {
+      cluster = { center: point, items: [] }
+      clusters.push(cluster)
+    }
+
+    cluster.items.push({ id: photo.id, point })
+    cluster.center = cluster.center.add(point).divideBy(cluster.items.length)
+  })
+
+  return clusters
+}
+
+// Apply a cluster layout to reduce marker overlap at the current zoom.
+const applyLayout = () => {
+  if (!map) {
+    return
+  }
+
+  const clusters = buildClusters()
+
+  clusters.forEach((cluster) => {
+    if (cluster.items.length === 1) {
+      const item = cluster.items[0]
+      const marker = markers.get(item.id)
+      if (marker) {
+        marker.setLatLng(map.layerPointToLatLng(item.point))
+      }
+      return
+    }
+
+    cluster.items.forEach((item, index) => {
+      const marker = markers.get(item.id)
+      if (!marker) {
+        return
+      }
+      const offset = getSpiralOffset(index)
+      const target = window.L.point(cluster.center.x + offset.x, cluster.center.y + offset.y)
+      marker.setLatLng(map.layerPointToLatLng(target))
+    })
+  })
+}
+
+// Toggle selection state for a photo and reflect it on the marker.
 const toggleSelect = (photoId) => {
   if (selectedLookup.value[photoId]) {
     delete selectedLookup.value[photoId]
@@ -38,6 +106,7 @@ const toggleSelect = (photoId) => {
   updateMarker(photoId)
 }
 
+// Clear all selections and reset marker styling.
 const clearSelection = () => {
   Object.keys(selectedLookup.value).forEach((photoId) => {
     delete selectedLookup.value[photoId]
@@ -45,6 +114,7 @@ const clearSelection = () => {
   })
 }
 
+// Download one photo directly or multiple as a zip.
 const downloadSelection = async () => {
   const selectedIds = Object.keys(selectedLookup.value)
   if (!selectedIds.length) {
@@ -96,6 +166,7 @@ const downloadSelection = async () => {
   URL.revokeObjectURL(url)
 }
 
+// Pan/zoom to an entered coordinate and drop a highlight marker.
 const jumpToCoordinates = () => {
   const [latValue, lonValue] = jumpCoords.value.split(',').map((item) => item.trim())
   const lat = Number.parseFloat(latValue)
@@ -120,6 +191,7 @@ const jumpToCoordinates = () => {
   jumpMarker.bringToFront()
 }
 
+// Remove the jump marker when the input is cleared.
 watch(jumpCoords, (value) => {
   if (value.trim() !== '' || !jumpMarker) {
     return
@@ -128,6 +200,7 @@ watch(jumpCoords, (value) => {
   jumpMarker = null
 })
 
+// Initialize the Leaflet map, markers, and controls.
 const initMap = () => {
   map = window.L.map('map', {
     zoomControl: false,
@@ -162,8 +235,12 @@ const initMap = () => {
   if (photos.value.length) {
     map.fitBounds(bounds, { padding: [48, 48] })
   }
+
+  applyLayout()
+  map.on('zoomend', applyLayout)
 }
 
+// Load photo metadata and bring up the map on mount.
 onMounted(async () => {
   try {
     const response = await fetch('/photos.json')
@@ -180,7 +257,13 @@ onMounted(async () => {
   <div class="app">
     <div id="map"></div>
     <div class="controls">
-      <input v-model="jumpCoords" placeholder="lat,lon" aria-label="Latitude, Longitude" />
+      <!-- Quick lat/lon jump input with action buttons. -->
+      <input
+        v-model="jumpCoords"
+        placeholder="lat,lon"
+        aria-label="Latitude, Longitude"
+        @keydown.enter.prevent="jumpToCoordinates"
+      />
       <button
         type="button"
         class="icon"
