@@ -1,6 +1,7 @@
 <script setup>
 import { zipSync } from 'fflate'
 import { onMounted, ref, watch } from 'vue'
+import { getSpiralOffset, MARKER_SPACING } from './spiral.js'
 
 // Reactive state for photo data, selection, and jump input.
 const photos = ref([])
@@ -9,8 +10,6 @@ const jumpCoords = ref('')
 // Layout and marker constants to keep spatial behavior consistent.
 const JUMP_ZOOM = 20
 const JUMP_PANE = 'jump-pane'
-const MARKER_SPACING = 80
-const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5))
 
 // Leaflet runtime references.
 let map = null
@@ -34,16 +33,6 @@ const updateMarker = (photoId) => {
     return
   }
   marker.setIcon(makeIcon(photo, Boolean(selectedLookup.value[photoId])))
-}
-
-// Spread items around a center using a golden-angle spiral.
-const getSpiralOffset = (index) => {
-  if (index === 0) {
-    return { x: 0, y: 0 }
-  }
-  const radius = MARKER_SPACING * Math.sqrt(index)
-  const angle = index * GOLDEN_ANGLE
-  return { x: radius * Math.cos(angle), y: radius * Math.sin(angle) }
 }
 
 // Group nearby markers into layout clusters in pixel space.

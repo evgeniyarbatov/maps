@@ -26,6 +26,10 @@ extract-photos:
 run:
 	cd $(SITE_DIR) && npm run dev
 
+test: install
+	@$(PYTHON) -m unittest discover -s tests
+	cd $(SITE_DIR) && npm run test
+
 clean:
 	@rm -rf \
 	site/public/thumbs \
