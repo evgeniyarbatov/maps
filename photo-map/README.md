@@ -2,7 +2,9 @@
 
 Photo Map is a local web app that plots geotagged photos on a map and lets you browse thumbnails while keeping originals via symlinks.
 
-## Extract photo data (run once)
+<img width="1538" height="841" alt="Photo Map" src="https://github.com/user-attachments/assets/5330af52-bced-4e0a-b1cf-8d1ac773badb" />
+
+## Extract metadata
 
 ```bash
 make extract-photos INPUT_DIR=/Users/zhenya/Downloads/soc-son
@@ -13,13 +15,13 @@ Outputs:
 - Thumbnails in `site/public/thumbs`
 - Original images are symlinked in `site/public/photos`
 
-## Run the site
+## Run
 
 ```bash
 make run
 ```
 
-## Use the map
+## Use
 
 - Click a thumbnail on the map to select/deselect it.
 - Use the input fields to jump to `lat`, `lon`
