@@ -1,6 +1,12 @@
 <script setup>
 import { zipSync } from 'fflate'
 import { onMounted, ref, watch } from 'vue'
+import {
+  clearSelectionState,
+  getDownloadPlan,
+  parseJumpCoordinates,
+  toggleSelectionState,
+} from './controls.js'
 import { getSpiralOffset, MARKER_SPACING } from './spiral.js'
 
 // Reactive state for photo data, selection, and jump input.
@@ -87,34 +93,26 @@ const applyLayout = () => {
 
 // Toggle selection state for a photo and reflect it on the marker.
 const toggleSelect = (photoId) => {
-  if (selectedLookup.value[photoId]) {
-    delete selectedLookup.value[photoId]
-  } else {
-    selectedLookup.value[photoId] = true
-  }
+  toggleSelectionState(selectedLookup.value, photoId)
   updateMarker(photoId)
 }
 
 // Clear all selections and reset marker styling.
 const clearSelection = () => {
-  Object.keys(selectedLookup.value).forEach((photoId) => {
-    delete selectedLookup.value[photoId]
-    updateMarker(photoId)
-  })
+  const selectedIds = Object.keys(selectedLookup.value)
+  clearSelectionState(selectedLookup.value)
+  selectedIds.forEach(updateMarker)
 }
 
 // Download one photo directly or multiple as a zip.
 const downloadSelection = async () => {
-  const selectedIds = Object.keys(selectedLookup.value)
-  if (!selectedIds.length) {
+  const plan = getDownloadPlan(photos.value, selectedLookup.value)
+  if (plan.type === 'none') {
     return
   }
 
-  if (selectedIds.length === 1) {
-    const photo = photos.value.find((item) => item.id === selectedIds[0])
-    if (!photo) {
-      return
-    }
+  if (plan.type === 'single') {
+    const photo = plan.photo
     const link = document.createElement('a')
     link.href = photo.original
     link.download = photo.name
@@ -125,11 +123,7 @@ const downloadSelection = async () => {
   }
 
   const files = await Promise.all(
-    selectedIds.map(async (photoId) => {
-      const photo = photos.value.find((item) => item.id === photoId)
-      if (!photo) {
-        return null
-      }
+    plan.photos.map(async (photo) => {
       const response = await fetch(photo.original)
       const data = new Uint8Array(await response.arrayBuffer())
       return { name: photo.name, data }
@@ -157,18 +151,16 @@ const downloadSelection = async () => {
 
 // Pan/zoom to an entered coordinate and drop a highlight marker.
 const jumpToCoordinates = () => {
-  const [latValue, lonValue] = jumpCoords.value.split(',').map((item) => item.trim())
-  const lat = Number.parseFloat(latValue)
-  const lon = Number.parseFloat(lonValue)
-  if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+  const coords = parseJumpCoordinates(jumpCoords.value)
+  if (!coords) {
     return
   }
 
-  map.setView([lat, lon], JUMP_ZOOM)
+  map.setView([coords.lat, coords.lon], JUMP_ZOOM)
   if (jumpMarker) {
-    jumpMarker.setLatLng([lat, lon])
+    jumpMarker.setLatLng([coords.lat, coords.lon])
   } else {
-    jumpMarker = window.L.circleMarker([lat, lon], {
+    jumpMarker = window.L.circleMarker([coords.lat, coords.lon], {
       pane: JUMP_PANE,
       radius: 9,
       color: '#ffffff',
