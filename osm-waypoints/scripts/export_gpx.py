@@ -68,10 +68,10 @@ def build_gpx(waypoints: list[dict]) -> ET.Element:
 
         ET.SubElement(wpt, "name").text = name[:255]
 
-        desc_parts = [category, f"icon={symbol}"]
-        if waypoint.get("validation_reason"):
-            desc_parts.append(to_english(waypoint["validation_reason"]))
-        ET.SubElement(wpt, "desc").text = " | ".join(desc_parts)[:1024]
+        description = to_english(waypoint.get("description", "")).strip()
+        if not description:
+            description = category
+        ET.SubElement(wpt, "desc").text = description[:1024]
 
         ET.SubElement(wpt, "type").text = category[:64]
         ET.SubElement(wpt, "sym").text = symbol

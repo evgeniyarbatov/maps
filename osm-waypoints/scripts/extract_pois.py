@@ -9,6 +9,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from config import DATA_DIR, OSM_EXTRACT, POIS_RAW
+from osm_context import parse_elevation
 from poi_rules import matches_poi, poi_display_name
 
 OSM_NS = {"osm": "http://www.openstreetmap.org/osm/0.6"}
@@ -66,7 +67,7 @@ def extract_pois(osm_path: Path) -> list[dict]:
 
         lat = float(node.get("lat", "0"))
         lon = float(node.get("lon", "0"))
-        ele = node.get("ele")
+        node_ele = float(node.get("ele")) if node.get("ele") else None
 
         pois.append(
             {
@@ -74,7 +75,7 @@ def extract_pois(osm_path: Path) -> list[dict]:
                 "name": poi_display_name(tags, category),
                 "lat": lat,
                 "lon": lon,
-                "ele": float(ele) if ele else None,
+                "ele": parse_elevation(tags, node_ele),
                 "category": category,
                 "tags": tags,
             }
@@ -103,7 +104,7 @@ def extract_pois(osm_path: Path) -> list[dict]:
                 "name": poi_display_name(tags, category),
                 "lat": lat,
                 "lon": lon,
-                "ele": None,
+                "ele": parse_elevation(tags),
                 "category": category,
                 "tags": tags,
             }

@@ -7,9 +7,8 @@ import json
 import sys
 import time
 
-import requests
-
-from config import OLLAMA_MODEL, OLLAMA_URL, POIS_RAW, POIS_VALIDATED
+from config import OLLAMA_MODEL, POIS_RAW, POIS_VALIDATED
+from ollama_client import ensure_model, generate_json
 
 PROMPT_TEMPLATE = """You help someone plan a walk on foot and curate OpenStreetMap points of interest.
 
@@ -40,49 +39,16 @@ or
 """
 
 
-def ensure_model(model: str) -> None:
-    response = requests.get(f"{OLLAMA_URL}/api/tags", timeout=10)
-    response.raise_for_status()
-    installed = {item["name"].split(":")[0] for item in response.json().get("models", [])}
-    base_name = model.split(":")[0]
-    if base_name not in installed:
-        print(f"Model {model} not found locally. Pulling with ollama...")
-        subprocess_pull = requests.post(
-            f"{OLLAMA_URL}/api/pull",
-            json={"name": model, "stream": False},
-            timeout=600,
-        )
-        subprocess_pull.raise_for_status()
-
-
 def classify_poi(poi: dict, model: str) -> dict:
     prompt = PROMPT_TEMPLATE.format(
         name=poi["name"],
         category=poi["category"],
         tags=json.dumps(poi["tags"], ensure_ascii=False),
     )
-
-    response = requests.post(
-        f"{OLLAMA_URL}/api/generate",
-        json={
-            "model": model,
-            "prompt": prompt,
-            "stream": False,
-            "format": "json",
-            "options": {"temperature": 0.1},
-        },
-        timeout=120,
-    )
-    response.raise_for_status()
-
-    raw = response.json().get("response", "{}")
-    try:
-        verdict = json.loads(raw)
-    except json.JSONDecodeError:
-        verdict = {"valid": False, "reason": f"Unparseable model response: {raw[:200]}"}
+    verdict = generate_json(prompt, model=model)
 
     valid = bool(verdict.get("valid"))
-    reason = str(verdict.get("reason", "")).strip()
+    reason = str(verdict.get("reason", verdict.get("error", ""))).strip()
 
     return {**poi, "valid": valid, "validation_reason": reason}
 
@@ -101,8 +67,8 @@ def main() -> int:
 
     try:
         ensure_model(OLLAMA_MODEL)
-    except requests.RequestException as exc:
-        print(f"Cannot reach Ollama at {OLLAMA_URL}: {exc}", file=sys.stderr)
+    except Exception as exc:
+        print(f"Cannot reach Ollama: {exc}", file=sys.stderr)
         return 1
 
     validated: list[dict] = []
@@ -112,7 +78,7 @@ def main() -> int:
         print(f"[{index}/{len(pois)}] {poi['name']} ({poi['category']})")
         try:
             result = classify_poi(poi, OLLAMA_MODEL)
-        except requests.RequestException as exc:
+        except Exception as exc:
             print(f"  skipped: {exc}", file=sys.stderr)
             continue
 

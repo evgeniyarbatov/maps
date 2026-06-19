@@ -20,7 +20,7 @@ SCRIPTS_DIR = scripts
 
 export GPX_DIR BUFFER_KM OLLAMA_MODEL OLLAMA_URL MAP_DPI
 
-.PHONY: venv install country extract-osm extract-pois validate-pois render-map export-gpx all clean
+.PHONY: venv install country extract-osm extract-pois validate-pois describe-pois render-map export-gpx all clean
 
 venv:
 	@python3 -m venv $(VENV_PATH)
@@ -45,10 +45,13 @@ extract-pois: extract-osm
 validate-pois: extract-pois
 	@cd $(SCRIPTS_DIR) && $(CURDIR)/$(PYTHON) validate_pois.py
 
-render-map: validate-pois
+describe-pois: validate-pois
+	@cd $(SCRIPTS_DIR) && $(CURDIR)/$(PYTHON) describe_pois.py
+
+render-map: describe-pois
 	@cd $(SCRIPTS_DIR) && $(CURDIR)/$(PYTHON) render_map.py
 
-export-gpx: validate-pois
+export-gpx: describe-pois
 	@cd $(SCRIPTS_DIR) && $(CURDIR)/$(PYTHON) export_gpx.py
 
 all: export-gpx render-map
