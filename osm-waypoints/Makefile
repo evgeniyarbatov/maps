@@ -20,12 +20,19 @@ SCRIPTS_DIR = scripts
 
 export GPX_DIR BUFFER_KM OLLAMA_MODEL OLLAMA_URL MAP_DPI
 
-.PHONY: venv install country extract-osm extract-pois validate-pois describe-pois render-map export-gpx all clean
+.PHONY: install-brew venv install country extract-osm extract-pois validate-pois describe-pois render-map export-gpx all clean
+
+install-brew:
+	@command -v brew >/dev/null 2>&1 || { \
+		echo "Homebrew is required. Install from https://brew.sh"; \
+		exit 1; \
+	}
+	@brew bundle check --file=Brewfile >/dev/null 2>&1 || brew bundle --file=Brewfile
 
 venv:
 	@python3 -m venv $(VENV_PATH)
 
-install: venv
+install: install-brew venv
 	@$(PIP) install --disable-pip-version-check -q --upgrade pip
 	@$(PIP) install --disable-pip-version-check -q -r $(REQUIREMENTS)
 
