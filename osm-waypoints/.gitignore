@@ -1,2 +1,7 @@
-osm/
+osm/*
+!osm/.gitkeep
+data/*
+!data/.gitkeep
 .venv/
+__pycache__/
+*.pyc
