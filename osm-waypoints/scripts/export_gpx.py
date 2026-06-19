@@ -73,8 +73,8 @@ def build_gpx(waypoints: list[dict]) -> ET.Element:
             description = category
         ET.SubElement(wpt, "desc").text = description[:1024]
 
-        ET.SubElement(wpt, "type").text = category[:64]
         ET.SubElement(wpt, "sym").text = symbol
+        ET.SubElement(wpt, "type").text = category[:64]
 
     return gpx
 
