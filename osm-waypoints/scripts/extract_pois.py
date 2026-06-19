@@ -71,7 +71,7 @@ def extract_pois(osm_path: Path) -> list[dict]:
         pois.append(
             {
                 "id": poi_id,
-                "name": poi_display_name(tags),
+                "name": poi_display_name(tags, category),
                 "lat": lat,
                 "lon": lon,
                 "ele": float(ele) if ele else None,
@@ -100,7 +100,7 @@ def extract_pois(osm_path: Path) -> list[dict]:
         pois.append(
             {
                 "id": poi_id,
-                "name": poi_display_name(tags),
+                "name": poi_display_name(tags, category),
                 "lat": lat,
                 "lon": lon,
                 "ele": None,

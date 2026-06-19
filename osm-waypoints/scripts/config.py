@@ -8,7 +8,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 GPX_DIR = Path(os.environ.get("GPX_DIR", "/Users/arbatov/Documents/gpx/nui-dinh"))
-BUFFER_KM = float(os.environ.get("BUFFER_KM", "1"))
+BUFFER_KM = float(os.environ.get("BUFFER_KM", "0.25"))
 OSM_DIR = REPO_ROOT / "osm"
 DATA_DIR = REPO_ROOT / "data"
 

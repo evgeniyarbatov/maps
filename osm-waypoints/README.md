@@ -29,7 +29,7 @@ Each step is a separate Makefile target. Run them individually or chain with `ma
 
 | Step | Command | Output |
 |------|---------|--------|
-| 1. OSM extract | `make extract-osm` | `osm/extract.osm` — 1 km buffer around all GPX tracks |
+| 1. OSM extract | `make extract-osm` | `osm/extract.osm` — 250 m buffer around all GPX tracks |
 | 2. POI extraction | `make extract-pois` | `data/pois.json` — viewpoints, attractions, temples, churches, historic sites, peaks, etc. |
 | 3. LLM validation | `make validate-pois` | `data/pois_validated.json` — filters OSM misclassifications via Ollama |
 | 4. Map render | `make render-map` | `data/waypoints.png` — high-res map with contextily basemap |
@@ -56,7 +56,7 @@ Override defaults via Make variables or environment variables:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `GPX_DIR` | `/Users/arbatov/Documents/gpx/nui-dinh` | Directory of input GPX files |
-| `BUFFER_KM` | `1` | Buffer distance around tracks for the OSM extract |
+| `BUFFER_KM` | `0.25` | Buffer distance around tracks in km (default 250 m) |
 | `OLLAMA_MODEL` | `mistral-nemo` | Ollama model for POI validation |
 | `OLLAMA_URL` | `http://localhost:11434` | Ollama API endpoint |
 | `MAP_DPI` | `300` | Resolution of the rendered map image |

@@ -67,7 +67,7 @@ def main() -> int:
     min_lon, min_lat, max_lon, max_lat = polygon.bounds
 
     print(f"Loaded {len(points)} coordinates from {GPX_DIR}")
-    print(f"Buffer: {BUFFER_KM} km")
+    print(f"Buffer: {BUFFER_KM * 1000:.0f} m")
     print(f"Convex hull vertices: {len(polygon.exterior.coords) - 1}")
     print(f"Polygon bounds: {min_lon:.6f},{min_lat:.6f},{max_lon:.6f},{max_lat:.6f}")
 

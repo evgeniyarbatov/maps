@@ -6,7 +6,7 @@ PIP := $(VENV_PATH)/bin/pip
 REQUIREMENTS := requirements.txt
 
 GPX_DIR ?= /Users/arbatov/Documents/gpx/nui-dinh
-BUFFER_KM ?= 1
+BUFFER_KM ?= 0.25
 OLLAMA_MODEL ?= mistral-nemo
 OLLAMA_URL ?= http://localhost:11434
 MAP_DPI ?= 300

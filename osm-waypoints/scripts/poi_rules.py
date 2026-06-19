@@ -37,8 +37,14 @@ def matches_poi(tags: dict[str, str]) -> str | None:
     return None
 
 
-def poi_display_name(tags: dict[str, str]) -> str:
+def category_label(category: str) -> str:
+    """Turn an OSM category like 'tourism=viewpoint' into a display name."""
+    label = category.split("=", 1)[-1]
+    return label.replace("_", " ").title()
+
+
+def poi_display_name(tags: dict[str, str], category: str) -> str:
     for key in ("name:en", "name", "alt_name", "official_name"):
         if tags.get(key):
             return tags[key]
-    return "Unnamed POI"
+    return category_label(category)
