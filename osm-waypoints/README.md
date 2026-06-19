@@ -1,90 +1,108 @@
 # osm-waypoints
 
-The idea came to my mind when planning a Nui Dinh trip. Take an OSM extract within a given area and list all POIs in it. Save as a GPX file that I can upload to Garmin. Deleting waypoints is easy — I want to get a comprehensive list of what is available. Asking an LLM works, but this is a self-hosted option.
+Extract OpenStreetMap points of interest along GPX walking tracks, curate them with a local LLM, and export Garmin-ready waypoints with distinct icons and short labels.
+
+Built for planning on-foot outings — forest paths, village strolls, scenic walks, not just mountain hiking. The goal is a broad list of interesting places near your routes; trimming on the Garmin is easy.
 
 ## Prerequisites
 
-- **Python 3.10+**
-- **[osmium-tool](https://osmcode.org/osmium-tool/)** — used to cut a regional extract from the country PBF
-- **[Ollama](https://ollama.com/)** — for the POI validation step (local LLM)
+- **Python 3.10+** (system install)
+- **macOS** with [Homebrew](https://brew.sh) for **[osmium-tool](https://osmcode.org/osmium-tool/)** and **[Ollama](https://ollama.com/)** — listed in `Brewfile`
+
+## Installation
+
+Install system and Python dependencies:
 
 ```bash
-brew install osmium-tool ollama
-ollama pull mistral-nemo
+make install
 ```
+
+This runs `brew bundle` from the `Brewfile` (osmium-tool, ollama), creates a venv at `.venv`, and installs packages from `requirements.txt`.
+
+System deps only:
+
+```bash
+make install-brew
+```
+
+The default Ollama model (`mistral-nemo`) is pulled automatically on the first `validate-pois` or `describe-pois` run.
 
 ## Quick start
 
-Point `GPX_DIR` at a folder of hiking track GPX files, then run the full pipeline:
-
 ```bash
+make install
 make all GPX_DIR=/path/to/your/gpx/files
 ```
 
 Default `GPX_DIR` is `/Users/arbatov/Documents/gpx/nui-dinh`.
 
-## Pipeline steps
+## Pipeline
 
-Each step is a separate Makefile target. Run them individually or chain with `make all`.
+Each step is a separate Makefile target.
 
 | Step | Command | Output |
 |------|---------|--------|
-| 1. OSM extract | `make extract-osm` | `osm/extract.osm` — 250 m buffer around all GPX tracks |
-| 2. POI extraction | `make extract-pois` | `data/pois.json` — viewpoints, attractions, temples, churches, historic sites, peaks, etc. |
-| 3. LLM validation | `make validate-pois` | `data/pois_validated.json` — filters OSM misclassifications via Ollama |
-| 4. Map render | `make render-map` | `data/waypoints.png` — high-res map with contextily basemap |
-| 5. GPX export | `make export-gpx` | `data/waypoints.gpx` — Garmin-compatible waypoints |
+| 1. OSM extract | `make extract-osm` | `osm/extract.osm` — convex hull of all GPX tracks + 250 m buffer |
+| 2. POI extraction | `make extract-pois` | `data/pois.json` — viewpoints, peaks, temples, churches, historic sites, museums, etc. |
+| 3. LLM validation | `make validate-pois` | `data/pois_validated.json` — filters obvious OSM misclassifications |
+| 4. LLM descriptions | `make describe-pois` | updates `data/pois_validated.json` — short noun-phrase labels from OSM tags |
+| 5. Map render | `make render-map` | `data/waypoints.png` — high-res contextily basemap |
+| 6. GPX export | `make export-gpx` | `data/waypoints.gpx` — Garmin waypoints with per-type icons and ASCII names |
 
-Step 3 runs after POI extraction. Steps 4 and 5 use the validated POI list.
-
-### Run individual steps
+### Run step by step
 
 ```bash
-make install          # create venv and install Python deps
-make country          # download vietnam-latest.osm.pbf (~310 MB, cached)
-make extract-osm      # step 1
-make extract-pois     # step 2 (depends on step 1)
-make validate-pois    # step 3 (depends on step 2)
-make render-map       # step 4 (depends on step 3)
-make export-gpx       # step 5 (depends on step 3)
+make install          # brew deps + Python venv
+make country          # download vietnam-latest.osm.pbf (~310 MB, once)
+make extract-osm
+make extract-pois
+make validate-pois
+make describe-pois
+make render-map
+make export-gpx
 ```
+
+## What you get
+
+- **Tight extract** — buffered convex hull polygon around your tracks (`osm/extract-polygon.geojson`), not a loose rectangle
+- **Forgiving POI filter** — keeps anything interesting on a walk; drops shops, parking, and tagging mistakes
+- **Short descriptions** — 3–8 word phrases like `Buddhist temple` or `491 m peak`, no action verbs
+- **Garmin-friendly GPX** — distinct `<sym>` icons per POI type, Vietnamese transliterated to ASCII
+- **Sensible names** — uses `name:en` when available; unnamed POIs get their OSM type (e.g. `Viewpoint`)
 
 ## Configuration
 
-Override defaults via Make variables or environment variables:
-
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `GPX_DIR` | `/Users/arbatov/Documents/gpx/nui-dinh` | Directory of input GPX files |
-| `BUFFER_KM` | `0.25` | Buffer distance around tracks in km (default 250 m) |
-| `OLLAMA_MODEL` | `mistral-nemo` | Ollama model for POI validation |
+| `GPX_DIR` | `/Users/arbatov/Documents/gpx/nui-dinh` | Input GPX directory |
+| `BUFFER_KM` | `0.25` | Buffer around track hull in km (250 m) |
+| `OLLAMA_MODEL` | `mistral-nemo` | Ollama model for validation and descriptions |
 | `OLLAMA_URL` | `http://localhost:11434` | Ollama API endpoint |
-| `MAP_DPI` | `300` | Resolution of the rendered map image |
-
-Example with a different area and buffer:
+| `MAP_DPI` | `300` | Map image resolution |
 
 ```bash
-make all GPX_DIR=~/Documents/gpx/my-trail BUFFER_KM=2
+make all GPX_DIR=~/Documents/gpx/my-trail BUFFER_KM=0.5
 ```
 
 ## Outputs
 
 ```
 osm/
-  vietnam-latest.osm.pbf   # country extract (downloaded once)
-  extract.osm              # buffered area extract
+  vietnam-latest.osm.pbf    # country PBF (cached)
+  extract-polygon.geojson   # buffered convex hull
+  extract.osm               # regional OSM extract
 
 data/
-  pois.json                # raw POIs from OSM
-  pois_validated.json      # POIs after LLM filtering
-  waypoints.png            # map preview
-  waypoints.gpx            # upload to Garmin
+  pois.json                 # raw POIs
+  pois_validated.json       # filtered POIs + short descriptions
+  waypoints.png             # map preview
+  waypoints.gpx             # upload to Garmin
 ```
 
-## Clean up generated files
+## Clean up
 
 ```bash
 make clean
 ```
 
-This removes generated extracts and data files but keeps the downloaded country PBF.
+Removes generated extracts and data files; keeps the downloaded country PBF.
