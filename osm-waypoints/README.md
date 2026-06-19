@@ -19,12 +19,6 @@ make install
 
 This runs `brew bundle` from the `Brewfile` (osmium-tool, ollama), creates a venv at `.venv`, and installs packages from `requirements.txt`.
 
-System deps only:
-
-```bash
-make install-brew
-```
-
 The default Ollama model (`mistral-nemo`) is pulled automatically on the first `validate-pois` or `describe-pois` run.
 
 ## Quick start

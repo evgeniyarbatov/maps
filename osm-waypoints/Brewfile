@@ -1,5 +1,5 @@
 # System dependencies for osm-waypoints (macOS)
-# Install with: make install-brew  (or: brew bundle)
+# Install with: make install  (or: brew bundle)
 
 brew "osmium-tool"
 brew "ollama"
