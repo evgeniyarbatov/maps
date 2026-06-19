@@ -12,13 +12,40 @@ def to_english(text: str) -> str:
     return unidecode(text).strip()
 
 
+BANNED_PREFIXES = (
+    "walk ",
+    "walk to ",
+    "visit ",
+    "visit the ",
+    "turn ",
+    "turn to ",
+    "see ",
+    "see the ",
+    "go to ",
+    "head to ",
+    "stop at ",
+    "hike to ",
+    "climb to ",
+)
+
+MAX_DESCRIPTION_WORDS = 8
+
+
 def normalize_description(text: str) -> str:
-    """Keep at most one sentence for Garmin-friendly waypoint text."""
-    cleaned = to_english(text)
+    """Normalize to a short noun phrase for Garmin waypoint text."""
+    cleaned = to_english(text).strip().strip("\"'").rstrip(".!?")
     if not cleaned:
         return ""
 
-    sentence = cleaned.split(".", 1)[0].strip()
-    if sentence and not sentence.endswith("."):
-        sentence += "."
-    return sentence[:512]
+    phrase = cleaned.split(".", 1)[0].split(";", 1)[0].strip()
+    lowered = phrase.lower()
+    for prefix in BANNED_PREFIXES:
+        if lowered.startswith(prefix):
+            phrase = phrase[len(prefix) :].strip()
+            lowered = phrase.lower()
+
+    words = phrase.split()
+    if len(words) > MAX_DESCRIPTION_WORDS:
+        phrase = " ".join(words[:MAX_DESCRIPTION_WORDS])
+
+    return phrase[:128]

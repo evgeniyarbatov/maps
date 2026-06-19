@@ -12,20 +12,26 @@ from ollama_client import ensure_model, generate_json
 from osm_context import build_description_context
 from text_utils import normalize_description
 
-PROMPT_TEMPLATE = """Write a brief waypoint description for someone walking on foot.
+PROMPT_TEMPLATE = """Write a very short waypoint label from OpenStreetMap data.
 
 Rules:
-- 1 sentence maximum
+- short phrase only, 3-8 words
+- noun phrase style, not a sentence
+- no verbs and no imperatives
+- do not use words like walk, visit, turn, see, go, stop, hike, climb
 - plain English, ASCII only
 - use only facts present in the OSM context below
 - do not invent history, dates, or features
-- if context is sparse, describe the place type and any named detail available
+- if context is sparse, use the place type and name only
+
+Good examples: "Buddhist temple", "491 m peak", "Nui Dinh museum", "forest viewpoint"
+Bad examples: "Visit this temple", "Walk to the peak", "Turn left at the shrine"
 
 OSM context:
 {context}
 
 Reply with JSON only:
-{{"description": "one sentence"}}
+{{"description": "short phrase"}}
 """
 
 
