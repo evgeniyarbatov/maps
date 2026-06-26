@@ -12,6 +12,7 @@ OLLAMA_URL ?= http://localhost:11434
 MAP_DPI ?= 300
 
 OSM_URL = https://download.geofabrik.de/asia/vietnam-latest.osm.pbf
+include $(HOME)/gitRepo/dotfiles/make/osm-country.mk
 COUNTRY_OSM_FILE = $(notdir $(OSM_URL))
 
 OSM_DIR = osm
@@ -34,12 +35,6 @@ install: venv
 	@$(PIP) install --disable-pip-version-check -q --upgrade pip
 	@$(PIP) install --disable-pip-version-check -q -r $(REQUIREMENTS)
 
-country:
-	@mkdir -p $(OSM_DIR)
-	@if [ ! -f $(OSM_DIR)/$(COUNTRY_OSM_FILE) ]; then \
-		echo "Downloading $(OSM_URL)..."; \
-		curl -L -o $(OSM_DIR)/$(COUNTRY_OSM_FILE) $(OSM_URL); \
-	fi
 
 extract-osm: install country
 	@cd $(SCRIPTS_DIR) && PYTHONUNBUFFERED=1 $(CURDIR)/$(PYTHON) extract_osm.py
