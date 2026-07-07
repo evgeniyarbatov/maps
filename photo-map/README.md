@@ -7,7 +7,7 @@ Local web app to browse geotagged photos on a map and find them by `lat`, `lon`.
 ## Extract metadata
 
 ```bash
-make extract-photos INPUT_DIR=/Users/zhenya/Downloads/soc-son
+make extract-photos INPUT_DIR=$HOME/Downloads/soc-son
 ```
 
 Outputs:
