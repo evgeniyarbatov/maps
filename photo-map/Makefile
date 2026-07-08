@@ -16,12 +16,11 @@ venv:
 install: venv
 	@uv pip install -q -r $(REQUIREMENTS)
 
-extract-photos:
+extract-photos: install
 	@$(PYTHON) $(SCRIPTS_DIR)/extract_photo_locations.py \
 	--input $(INPUT_DIR) \
 	--output site/public/photos.json \
 	--thumbs-dir site/public/thumbs
-
 run:
 	cd $(SITE_DIR) && npm run dev
 
