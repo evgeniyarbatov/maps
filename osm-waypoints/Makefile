@@ -38,21 +38,16 @@ install: venv
 extract-osm: install country
 	@cd $(SCRIPTS_DIR) && PYTHONUNBUFFERED=1 $(CURDIR)/$(PYTHON) extract_osm.py
 
-extract-pois: extract-osm
+extract-pois: install extract-osm
 	@cd $(SCRIPTS_DIR) && $(CURDIR)/$(PYTHON) extract_pois.py
-
-validate-pois: extract-pois
+validate-pois: install extract-pois
 	@cd $(SCRIPTS_DIR) && $(CURDIR)/$(PYTHON) validate_pois.py
-
-describe-pois: validate-pois
+describe-pois: install validate-pois
 	@cd $(SCRIPTS_DIR) && $(CURDIR)/$(PYTHON) describe_pois.py
-
-render-map: describe-pois
+render-map: install describe-pois
 	@cd $(SCRIPTS_DIR) && $(CURDIR)/$(PYTHON) render_map.py
-
-export-gpx: describe-pois
+export-gpx: install describe-pois
 	@cd $(SCRIPTS_DIR) && $(CURDIR)/$(PYTHON) export_gpx.py
-
 all: export-gpx render-map
 
 clean:
