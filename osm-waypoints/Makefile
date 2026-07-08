@@ -24,7 +24,7 @@ export GPX_DIR BUFFER_KM OLLAMA_MODEL OLLAMA_URL MAP_DPI
 .PHONY: venv install country extract-osm extract-pois validate-pois describe-pois render-map export-gpx all clean
 
 venv:
-	@python3 -m venv $(VENV_PATH)
+	@uv venv $(VENV_PATH)
 
 install: venv
 	@command -v brew >/dev/null 2>&1 || { \
@@ -32,8 +32,7 @@ install: venv
 		exit 1; \
 	}
 	@brew bundle check --file=Brewfile >/dev/null 2>&1 || brew bundle --file=Brewfile
-	@$(PIP) install --disable-pip-version-check -q --upgrade pip
-	@$(PIP) install --disable-pip-version-check -q -r $(REQUIREMENTS)
+	@uv pip install -q -r $(REQUIREMENTS)
 
 
 extract-osm: install country
