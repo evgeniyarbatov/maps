@@ -1,26 +1,25 @@
-VENV_PATH := .venv
-
-PYTHON := $(VENV_PATH)/bin/python
-PIP := $(VENV_PATH)/bin/pip
-
-REQUIREMENTS := requirements.txt
+# Uses uv (https://docs.astral.sh/uv) for dependency management — uv sync creates/updates .venv; run commands via uv run, no manual activation.
+PYTHON := uv run python
 
 SCRIPTS_DIR = scripts
 SITE_DIR = site
 
 default: run
 
-venv:
-	@uv venv $(VENV_PATH)
+.PHONY: install lock extract-photos run test clean cleanvenv
 
-install: venv
-	@uv pip install -q -r $(REQUIREMENTS)
+install:
+	@uv sync
+
+lock:
+	@uv lock
 
 extract-photos: install
 	@$(PYTHON) $(SCRIPTS_DIR)/extract_photo_locations.py \
 	--input $(INPUT_DIR) \
 	--output site/public/photos.json \
 	--thumbs-dir site/public/thumbs
+
 run:
 	cd $(SITE_DIR) && npm run dev
 
@@ -35,4 +34,4 @@ clean:
 	site/public/photos.json
 
 cleanvenv:
-	@rm -rf $(VENV_PATH)
+	@rm -rf .venv
