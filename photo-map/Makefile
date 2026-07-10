@@ -6,7 +6,7 @@ SITE_DIR = site
 
 default: run
 
-.PHONY: install lock extract-photos run test clean cleanvenv
+.PHONY: install lock extract-photos run test clean
 
 install:
 	@uv sync
@@ -33,5 +33,3 @@ clean:
 	site/public/photos \
 	site/public/photos.json
 
-cleanvenv:
-	@rm -rf .venv
