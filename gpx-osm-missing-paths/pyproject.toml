@@ -1,0 +1,58 @@
+[project]
+name = "gpx-osm-missing-paths"
+version = "0.1.0"
+description = "Pipeline to cluster personal GPX running traces, identify potential missing footpaths in local OSM extract, generate JOSM-ready .osm extracts + bundled GPX per logical path cluster, named from nearby POIs."
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+  { name = "Evgeny Arbatov", email = "evgeny@arbatov.uk" }
+]
+dependencies = [
+  "gpxpy>=1.6.2",
+  "geopandas>=1.0.1",
+  "shapely>=2.0.6",
+  "pyosmium>=4.0.2",
+  "pandas>=2.2.2",
+  "pydantic>=2.8.2",
+  "pydantic-settings>=2.3.4",
+  "pyyaml>=6.0.2",
+  "typer[all]>=0.12.3",
+  "tqdm>=4.66.4",
+  "rich>=13.7.1",
+  "networkx>=3.3",
+]
+
+[project.optional-dependencies]
+dev = [
+  "ruff>=0.5.5",
+  "pytest>=8.2.2",
+  "pytest-cov>=5.0.0",
+  "mypy>=1.11.0",
+  "pre-commit>=3.7.1",
+  "ipykernel>=6.29.5",
+]
+
+[project.scripts]
+gpx-osm = "gpx_osm_missing_paths.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+select = ["E", "F", "I", "UP", "B", "SIM", "C4"]
+ignore = ["E501", "B008"]  # line length, typer depends
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_ignores = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --cov=src/gpx_osm_missing_paths"

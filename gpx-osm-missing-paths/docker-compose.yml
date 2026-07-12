@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  osrm:
+    image: osrm/osrm-backend:latest
+    container_name: gpx-osm-osrm
+    volumes:
+      - ./data/osrm:/data
+    ports:
+      - "5000:5000"
+    # After you prepare the .osrm files, run:
+    # docker compose run --rm osrm osrm-routed --algorithm MLD /data/region.osrm
+    command: ["osrm-routed", "--algorithm", "MLD", "/data/region.osrm"]
+    restart: unless-stopped
+    # For development you can override command or use profiles
