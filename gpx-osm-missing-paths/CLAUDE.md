@@ -19,10 +19,13 @@ This file contains project-specific rules and context. **Always follow these whe
 - Use `pathlib.Path` and Pydantic v2 models exclusively for configuration and data transfer.
 - Make progress visible with `rich` + `tqdm`. The CLI should feel alive and informative even on 500+ GPX files.
 - Handle UTF-8 / Vietnamese text correctly everywhere (POI names, file names, logs).
+- Resolve OSM via `Settings.resolve_osm_pbf()` (city clip preferred). Default city poly is `osm/hcm.poly`.
+- Emit JOSM bundles **only** for clusters classified as missing from OSM; each bundle needs `cluster_meta.json` with `num_gpx_traces` and `avg_length_m`.
 
 ## Never Do
-- Commit anything inside `gpx/`, `clusters/`, `output/`, or large `.osm`/`.pbf` files.
-- Rely on internet/Overpass after initial setup. Everything must work with a local PBF + `osmium`.
+- Commit anything inside `gpx/`, `clusters/`, `output/`, or large `.osm`/`.pbf` files (city `osm/*.poly` boundaries are OK).
+- Implement a second Geofabrik/OSM download or refresh system. Country PBF comes from **dotfiles** `fetch-osm` / launchd `com.arbatov.fetch-osm` → `~/.cache/osm`. Use `include $(HOME)/gitRepo/dotfiles/make/osm-country.mk` only.
+- Rely on internet/Overpass after the country PBF is cached. City work is local `osmconvert` + `osmium` on `CITY_OSM_PBF`.
 - Introduce heavy services (PostGIS, full DuckDB spatial, Elasticsearch) without strong justification and Makefile opt-in.
 - Make the core `make pipeline` depend on a running OSRM server. OSRM is advanced/optional only.
 - Use magic numbers without named constants in `config.py` or clear comments.
@@ -38,14 +41,17 @@ This file contains project-specific rules and context. **Always follow these whe
 6. Update `README.md` quickstart or examples if user-visible behavior changed.
 
 ## Key Files & Their Responsibilities
-- `src/gpx_osm_pipeline/models.py` — Single source of truth for `GPXSegment`, `Cluster`, `POI`, `Config`.
-- `config.py` — Loads `.env` + defaults into Pydantic `Settings`. All tunable params live here.
+- `src/gpx_osm_missing_paths/models.py` — Single source of truth for `GPXSegment`, `Cluster`, `POI`.
+- `config.py` — Loads `.env` + defaults into Pydantic `Settings` (shared OSM cache, city poly, clustering knobs).
 - `gpx_processor.py` — The only place that touches `gpxpy`. Produces clean segments.
-- `clusterer.py` — Contains the documented clustering heuristic. If you change the algorithm, update the big comment block and architecture doc.
-- `namer.py` — POI loading (once), spatial queries, name generation logic. Keep the ranking rules clear.
-- `osm_extractor.py` — All `osmium` subprocess calls + buffer math + bundle writing. Atomic writes preferred.
-- `cli.py` — Typer commands only. Thin orchestration + pretty printing. Business logic stays in modules.
-- `utils.py` — Small pure helpers (haversine, bearing, slugify, UTM zone guess for Vietnam, etc.).
+- `clusterer.py` — Documented clustering heuristic. Algorithm changes → update comment + architecture doc.
+- `missing_filter.py` — Coverage vs OSM ways; product gate for which clusters get bundles.
+- `namer.py` — POI loading (once), spatial queries, name generation logic.
+- `osm_extractor.py` — `osmium` extracts + buffer math + bundle writing (`cluster_meta.json`). Atomic writes preferred.
+- `cli.py` — Typer commands only. Thin orchestration + pretty printing.
+- `utils.py` — Small pure helpers (haversine, bearing, slugify, UTM zone guess, etc.).
+- `Makefile` — `country` / `city` / pipeline; includes `dotfiles/make/osm-country.mk`.
+- `osm/*.poly` — Committed city boundaries (default `hcm.poly`).
 
 ## Clustering Heuristic Notes (Important Context)
 The current implementation uses [describe the hybrid HDBSCAN + overlap graph or whatever was chosen]. 

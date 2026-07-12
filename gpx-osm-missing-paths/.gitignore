@@ -1,0 +1,29 @@
+# Local data
+gpx/
+clusters/
+output/
+data/processed/
+.env
+
+# City OSM extracts (country PBF lives in ~/.cache/osm via dotfiles fetch-osm)
+osm/*.osm
+osm/*.osm.pbf
+osm/*-r*km.poly
+# Keep committed city boundaries: osm/*.poly (except radius circles)
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+*.egg-info/
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/

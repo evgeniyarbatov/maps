@@ -18,38 +18,56 @@ You run the same new alley or park shortcut 12 times. Each GPX is slightly diffe
 ## Quickstart
 
 ```bash
-# 1. Clone / create the project
+# 1. Clone
 git clone ... gpx-osm-missing-paths
 cd gpx-osm-missing-paths
 
-# 2. Setup (uv recommended)
+# 2. Setup (uv)
 make setup
-# or: uv sync --all-extras && cp .env.example .env
+cp env.example .env   # optional; defaults target HCMC + Vietnam cache
 
-# 3. Edit .env
-# Set OSM_PBF_PATH to your local extract (download from geofabrik.de or cut with osmium)
-# Put your raw .gpx files into ./gpx/ (this folder is gitignored)
+# 3. OSM (shared cache — do not download Geofabrik inside this repo)
+# Country PBF: ~/.cache/osm/vietnam-latest.osm.pbf
+# Maintained by dotfiles launchd com.arbatov.fetch-osm (weekly) or:
+make country          # calls ~/gitRepo/dotfiles/bin/fetch-osm
+make city             # clip to osm/hcm.poly → osm/hcm.osm.pbf
 
-# 4. Run the full pipeline
+# 4. Drop raw .gpx into ./gpx/ (gitignored)
+
+# 5. Full pipeline (city clip + process + cluster + missing filter + name + extract)
 make pipeline
 
-# 5. Open results
-open clusters/          # or explorer clusters/
+# 6. Open results
+open clusters/
 # For any cluster:
 #   - Drag the .osm into JOSM
 #   - Drag the .gpx files from its gpx/ subfolder as reference layers
 #   - Draw the missing path where your traces show it should be
 ```
 
+### Other city / country
+
+```bash
+# Another city (same country PBF) — add osm/hanoi.poly first
+make city BOUNDARY_POLYGON=osm/hanoi.poly
+make pipeline BOUNDARY_POLYGON=osm/hanoi.poly
+
+# Another country (shared cache basename must match Geofabrik file)
+make country URL=https://download.geofabrik.de/asia/thailand-latest.osm.pbf
+```
+
 ## Pipeline Stages
 
-| Step | Command          | What it does |
-|------|------------------|--------------|
-| 1    | `make process`   | Parse every GPX, clean points, simplify, filter short segments, produce `output/segments.*` |
-| 2    | `make cluster`   | Deduplicate + cluster segments that physically overlap (HDBSCAN + overlap graph). Creates representative lines per cluster |
-| 3    | `make name`      | Load POIs from your OSM extract once, then for every cluster find nearby landmarks and generate a beautiful human-readable name + slug |
-| 4+5  | `make extract`   | For each cluster: compute 50m buffer → `osmium extract` a tiny focused `.osm` → bundle with all its GPX files + `cluster_meta.json` |
-| All  | `make pipeline`  | Runs 1→4 in order with nice progress |
+| Step | Command | What it does |
+|------|---------|--------------|
+| 0a | `make country` | Ensure country PBF in `~/.cache/osm` via **dotfiles fetch-osm** (no parallel download flow) |
+| 0b | `make city` | Clip country PBF with `BOUNDARY_POLYGON` (default `osm/hcm.poly`) → `osm/<city>.osm.pbf` |
+| 1 | `make process` | Parse every GPX, clean, simplify → `output/segments.*` |
+| 2 | `make cluster` | Cluster overlapping segments → representative lines |
+| 3 | `make filter-missing` | Keep only clusters poorly covered by OSM ways |
+| 4 | `make name` | POI-based human names for missing clusters |
+| 5 | `make extract` | 50m `.osm` + GPX bundle + `cluster_meta.json` (`num_gpx_traces`, `avg_length_m`) |
+| All | `make pipeline` | `city` then 1→5 |
 
 ## Output Structure
 
@@ -70,12 +88,12 @@ Open the `.osm` in JOSM, load the GPX files from the subfolder, and you have per
 ## Requirements
 
 - Python 3.12+
-- `uv` (or pip, but uv is strongly preferred)
-- `osmium-tool` (for fast local OSM extracts and POI preparation)
-  - macOS: `brew install osmium-tool`
-  - Ubuntu/Debian: `apt install osmium-tool`
-- Docker (optional, only if you want to experiment with local OSRM map-matching)
-- A regional OSM PBF extract (e.g. `vietnam-latest.osm.pbf` or a city cut). Place it somewhere and point `OSM_PBF_PATH` at it.
+- `uv` (strongly preferred)
+- `osmium-tool` and `osmconvert` (city clip + per-cluster extracts)
+  - macOS: `brew install osmium-tool osmctools` (or equivalent providing `osmconvert`)
+  - Ubuntu/Debian: `apt install osmium-tool osmctools`
+- Shared country OSM cache from **dotfiles** (`com.arbatov.fetch-osm` → `~/.cache/osm/…`)
+- Docker (optional, local OSRM only)
 
 ## Tuning for Your City / Data
 

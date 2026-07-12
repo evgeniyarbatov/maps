@@ -10,43 +10,89 @@ You are an expert Python geospatial engineer and pragmatic full-stack developer.
 Build a complete, reproducible, local-first pipeline that helps OpenStreetMap contributors (especially runners/walkers in cities like Ho Chi Minh City) automatically:
 
 1. Ingest a large collection of raw GPX files from runs/walks (in `./gpx/`, gitignored).
-2. Parse, clean, deduplicate and **cluster** GPX track segments that represent the **same physical path** (many traces on one new footpath/alley/stairway).
-3. Automatically generate **human-readable, distinct names** for each cluster by querying a local OSM extract for major POIs (cafes, parks, schools, landmarks, named streets) within ~50 meters.
-4. For each cluster, **check what already exists in OSM** by producing a small, focused `.osm` extract (with 50m buffer around the cluster geometry) that can be opened directly in JOSM.
-5. Bundle, for every cluster: the `.osm` file + **all original GPX segments** belonging to that cluster (in a subfolder) so the mapper has perfect reference data to draw the accurate missing footpath/road in JOSM.
+2. Parse, clean, deduplicate and **cluster** GPX track segments that represent the **same physical path** (many traces on one footpath/alley/stairway).
+3. **Filter to missing paths only**: for each cluster, compare its geometry against existing OSM ways (footways, paths, steps, residential alleys, etc.) from the **city-scoped local PBF**. **Only keep clusters that are not already mapped** (or only poorly covered) in OSM. Do **not** write JOSM bundles for well-covered paths.
+4. Automatically generate **human-readable, distinct names** for each *missing* cluster by querying the city OSM extract for major POIs (cafes, parks, schools, landmarks, named streets) within ~50 meters.
+5. For each missing-path cluster only, produce a focused JOSM bundle:
+   - Small `.osm` extract (50m buffer around the cluster geometry)
+   - All original GPX segments for that cluster (subfolder)
+   - **`cluster_meta.json`** documenting at minimum:
+     - `num_gpx_traces` — how many GPX traces (segments) are in the cluster
+     - `avg_length_m` — average length of those GPX traces in meters
+     - plus supporting fields (human name, total/min/max length, source files, etc.)
 
-The output lives in `./clusters/{sanitized_cluster_name}/` and is immediately actionable in JOSM + QGIS.
+The output lives in `./clusters/{sanitized_cluster_name}/` and contains **only mapping tasks for paths that appear missing from OSM**.
+
+## OSM data source (non-negotiable — reuse shared cache, do not invent another download flow)
+
+**Do not** implement Geofabrik downloaders, mirrors, or a second refresh daemon in this repo. Country extracts are already maintained by the user's **dotfiles** tooling:
+
+| Piece | Location / role |
+|-------|------------------|
+| Weekly fetch (launchd) | `~/gitRepo/dotfiles/launchd/com.arbatov.fetch-osm.plist.template` → runs `refresh-osm-cache` |
+| Fetcher | `~/gitRepo/dotfiles/bin/fetch-osm` (+ `refresh-osm-cache`) |
+| URL list | `~/gitRepo/dotfiles/osm/urls` (e.g. `vietnam-latest.osm.pbf`, …) |
+| Shared cache | `~/.cache/osm/<country>-latest.osm.pbf` (`OSM_CACHE_DIR`, `OSM_MAX_AGE_DAYS=7`) |
+| Make include | `~/gitRepo/dotfiles/make/osm-country.mk` → `COUNTRY_OSM_PATH`, targets `country` / `osm-country-fetch` |
+
+### Country + city knobs (generic; default HCMC)
+
+```make
+URL = https://download.geofabrik.de/asia/vietnam-latest.osm.pbf
+include $(HOME)/gitRepo/dotfiles/make/osm-country.mk
+
+OSM_DIR = osm
+BOUNDARY_POLYGON ?= osm/hcm.poly          # any city .poly
+CITY := $(basename $(notdir $(BOUNDARY_POLYGON)))
+CITY_OSM_PBF := $(OSM_DIR)/$(CITY).osm.pbf
+```
+
+- **Country**: set `URL` / `OSM_URL` (and matching `OSM_COUNTRY_FILE`) for Vietnam, Thailand, Singapore, etc. `make country` only calls existing `fetch-osm` into `~/.cache/osm`. Never curl Geofabrik from application Python.
+- **City**: committed osmconvert boundary polys under `osm/*.poly`. **Default is `osm/hcm.poly`** (Ho Chi Minh City; same poly family as `[private]/osm/hcm.poly`). Clip with:
+  ```bash
+  osmconvert $(COUNTRY_OSM_PATH) -B=$(BOUNDARY_POLYGON) \
+    --complete-ways --complete-multipolygons -o=$(CITY_OSM_PBF)
+  osmium cat --overwrite $(CITY_OSM_PBF) -o $(CITY_OSM)
+  ```
+- Other city: `make city BOUNDARY_POLYGON=osm/hanoi.poly` (add the poly first).
+- Other country: `make country URL=https://download.geofabrik.de/asia/thailand-latest.osm.pbf` then a Thailand city poly.
+- **Pipeline PBF**: all filter/name/extract steps use **`CITY_OSM_PBF`** (`Settings.resolve_osm_pbf()`), not the full country file, once `make city` has run.
+- Host tools required: `osmconvert`, `osmium-tool`. Missing country PBF → clear error pointing at `make country` or launchd `com.arbatov.fetch-osm`.
+- Gitignore: `osm/*.osm`, `osm/*.osm.pbf`; **commit** city `osm/*.poly` only.
+
+Config lives in `src/gpx_osm_missing_paths/config.py` (`Settings`: `osm_cache_dir`, `osm_country_file`, `boundary_polygon`, `resolve_osm_pbf()`).
 
 ## Non-Negotiable Tech Constraints
 - **Python 3.12+**, managed exclusively with `uv` (pyproject.toml, `uv sync`, `uv run`).
-- **Makefile** as the primary interface (`make pipeline`, `make process`, `make cluster`, etc.). No raw `python` commands in docs.
-- **Typer + Rich** for beautiful CLI (`gpx-osm process`, `gpx-osm cluster`, `gpx-osm name`, `gpx-osm extract`, `gpx-osm pipeline`).
-- **Pydantic v2** models for all data (GPXSegment, Cluster, etc.).
+- **Makefile** as the primary interface (`make country`, `make city`, `make pipeline`, `make process`, `make cluster`, etc.). No raw `python` commands in docs.
+- **Typer + Rich** for beautiful CLI (`gpx-osm process`, `gpx-osm cluster`, `gpx-osm filter-missing`, `gpx-osm name`, `gpx-osm extract`, `gpx-osm osm-paths`).
+- **Pydantic v2** models for all data (GPXSegment, Cluster, Settings).
 - **geopandas + shapely + hdbscan + pyproj** for all geospatial work. Use haversine-aware clustering where possible.
-- **Local OSM handling via `osmium` CLI tool** (user installs `osmium-tool` or uses Docker). Never rely on Overpass API or internet after initial setup. Support a master `vietnam-latest.osm.pbf` or city-specific extract.
+- **Local OSM only** via shared cache + city poly + `osmium` / `osmconvert`. Never Overpass / internet after the country PBF is on disk. Never a project-local Geofabrik downloader.
 - **Docker + docker-compose** for optional local OSRM (for future map-matching). Do **not** make the core pipeline depend on a running OSRM server.
 - Keep dependencies lean. No heavy PostGIS, no DuckDB unless it dramatically simplifies (prefer pure geopandas + spatial index for POI queries).
-- All code in `src/gpx_osm_pipeline/`. Single `cli.py` entrypoint.
-- `.env` + `python-dotenv` for configuration. Provide `.env.example`.
+- All code in `src/gpx_osm_missing_paths/`. Single `cli.py` entrypoint (`gpx-osm` console script).
+- `.env` + pydantic-settings for configuration. Provide `env.example`.
 - Excellent logging with `rich` (progress bars with `tqdm`, colored status).
-- Git-friendly: `gpx/`, `clusters/`, `output/` are gitignored. Samples in `samples/` are committed.
+- Git-friendly: `gpx/`, `clusters/`, `output/`, `osm/*.osm(.pbf)` are gitignored. Samples + `osm/*.poly` are committed.
 
 ## Detailed Pipeline Steps (Implement Exactly)
 
 ### Step 0: Project Skeleton & DX (do this first)
 Create the full recommended directory structure (see below). Add:
-- Comprehensive `README.md` with quickstart, architecture diagram (ASCII or mermaid), examples for HCMC runners, troubleshooting (common GPX issues, osmium install, memory tips for large PBF).
-- `CLAUDE.md` with project-specific rules for future AI sessions (always run `make lint` before committing, prefer simple robust heuristics, update docs when behavior changes, never commit large clusters/, use `uv run`, test with samples first, etc.).
-- `docs/` with `architecture.md`, `usage.md` (detailed CLI + env vars + tuning clustering params), `data-model.md`, `osrm-setup.md` (how to cut a HCMC bbox and build small OSRM graph if wanted), `troubleshooting.md`.
-- `.gitignore` (already sketched), `pyproject.toml` (deps listed above + dev), `Makefile` (targets for every major step + `pipeline`).
-- `docker-compose.yml` with `osrm` service (commented that graph build is heavy).
-- `samples/` with 3-4 minimal but realistic GPX files (synthetic short runs around a park or alley, some overlapping, some distinct). Make them valid GPX 1.1 with `<trk><trkseg><trkpt>` + optional `<ele>` and `<time>`. One file with multiple segments.
-- Pydantic models in `models.py`.
+- Comprehensive `README.md` with quickstart, architecture diagram (ASCII or mermaid), examples for HCMC runners, troubleshooting (GPX issues, osmium/osmconvert install, **shared OSM cache** / launchd, city poly switching).
+- `CLAUDE.md` with project-specific rules (always `make lint`, simple heuristics, never commit large clusters/ or PBF extracts, use `uv run`, test with samples first, **reuse dotfiles OSM cache**, default `osm/hcm.poly`).
+- `docs/` with `architecture.md`, `usage.md` (CLI + env + clustering + missing filter + country/city OSM knobs), `data-model.md`, `osrm-setup.md`, `troubleshooting.md`.
+- `.gitignore`, `pyproject.toml`, `Makefile` including `$(HOME)/gitRepo/dotfiles/make/osm-country.mk` + `country` / `city` / `pipeline` targets.
+- `docker-compose.yml` with optional `osrm` service.
+- `osm/hcm.poly` committed (default city). Document adding more `osm/<city>.poly` files.
+- `samples/` with 3-4 minimal but realistic GPX files (valid GPX 1.1). One multi-segment file.
+- Pydantic models in `models.py`; path resolution in `config.py` (already sketched for OSM).
 
 ### Step 1: GPX Processing (`gpx_processor.py`)
 - Recursively find all `*.gpx` (and `*.gpx.gz` if easy) in `GPX_DIR`.
 - Use `gpxpy` to parse. Handle multiple tracks, multiple `<trkseg>`, extensions (Garmin, Strava, etc.).
-- For every trackpoint: validate lat/lon in Vietnam or reasonable bbox (configurable), convert to shapely Point with CRS EPSG:4326.
+- For every trackpoint: validate lat/lon in a configurable bbox (default Vietnam / city bbox derived from poly if easy), convert to shapely Point with CRS EPSG:4326.
 - Create `GPXSegment` Pydantic model: original_file, segment_id, geometry (LineString), length_m, num_points, start_time, end_time, bbox, raw_gpx_path (for copying later).
 - Cleaning:
   - Remove consecutive duplicate points (within 0.5m).
@@ -58,94 +104,99 @@ Create the full recommended directory structure (see below). Add:
 - CLI: `gpx-osm process` → shows progress, summary stats (# files, # segments kept, total km), writes `output/segments.geojson` and `output/segments.parquet`.
 
 ### Step 2: Deduplication + Clustering (`clusterer.py`)
-This is the hardest and most important part. Goal: group segments that physically represent the **same** footpath/alley/stairs so they become one "mapping task".
+This is hard and important. Goal: group segments that physically represent the **same** footpath/alley/stairs so they become one candidate mapping task.
 
 **Recommended practical algorithm (implement this or clearly better variant):**
 
 1. Take all cleaned LineStrings.
 2. Create midpoints + length + bearing features.
-3. **Rough bucketing**: assign each segment to H3 cells (resolution ~10 or 11, ~ few meters) of its midpoint and start/end. Use `h3` lib? Wait, add `h3` or implement simple geohash. Actually, to avoid new dep, use a simple grid or just proceed to spatial join.
-4. **Proximity graph / connected components** (best balance):
-   - For every pair of segments that are potentially close (first filter with `geopandas.sjoin` on 30m buffered geometries — this is efficient), compute:
-     - Hausdorff distance (shapely)
-     - Or better: fraction of length that overlaps when one is buffered 8-12m.
+3. **Rough bucketing**: spatial grid / geopandas sjoin (avoid O(n²) without mandatory new deps).
+4. **Proximity graph / connected components**:
+   - For every pair of segments that are potentially close (filter with `geopandas.sjoin` on ~30m buffered geometries), compute:
+     - Hausdorff distance (shapely) and/or fraction of length that overlaps when one is buffered 8-12m.
      - Direction similarity (bearing diff < 30°).
-   - If Hausdorff < 25m **AND** significant overlap (>40% of shorter length) **OR** they are almost collinear and close, connect them in a graph (use `networkx`? add as optional or implement simple Union-Find / DFS since N not millions).
-   - With 5k-20k segments this can be slow if naive O(n^2). Mitigate:
-     - Spatial index (geopandas `sindex` or shapely STRtree).
-     - Only consider segments whose midpoints are within 100m first.
-     - Or use HDBSCAN on **midpoints** (with haversine) to get rough groups, then refine within each bucket with the overlap logic. This hybrid is pragmatic.
-5. Assign `cluster_id` (integer) to each segment. Also compute `cluster_size` (how many segments in group).
-6. For each cluster, compute a **representative geometry**:
-   - Union of all (or top N longest) segments buffered slightly then unary_union, or take the longest segment as "canonical", or implement a simple "centerline" by averaging close parallel lines (advanced, optional — start with longest + note "merged").
-   - Store `representative_line` (LineString), total_length_m, num_segments, files list, bbox.
-7. Output: `output/clusters_raw.geojson` (one feature per cluster with properties + geometry) and assignment table linking segment_id → cluster_id.
+   - If Hausdorff < 25m **AND** significant overlap (>40% of shorter length) **OR** they are almost collinear and close, connect them (networkx optional; Union-Find / DFS is fine).
+   - Mitigate cost with spatial index (`sindex` / STRtree), midpoint distance prefilter, or HDBSCAN on midpoints then refine within buckets.
+5. Assign `cluster_id` to each segment; compute `cluster_size`.
+6. Per cluster **representative geometry** (longest segment is fine for v1) plus:
+   - `total_length_m`, `num_segments` / `num_gpx_traces`, **`avg_length_m`**, files list, bbox.
+7. Output: `output/clusters_raw.geojson` + segment→cluster assignment table.
 
 Tune defaults so that 8-15 runs on the same new alley become **one** cluster, while two parallel footpaths 40m apart stay separate.
 
-Document the clustering heuristic clearly in `docs/architecture.md` and `CLAUDE.md` so future changes are easy.
+Document the clustering heuristic clearly in `docs/architecture.md` and `CLAUDE.md`.
 
-### Step 3: Human-Readable Naming + POI Enrichment (`namer.py`)
-For every cluster:
+### Step 3: Missing-Path Filter (`missing_filter.py`)
+**Critical step.** Only produce clusters for paths **missing from OSM**. Use **`Settings.resolve_osm_pbf()`** (city extract).
 
-1. Load or prepare a **POI layer** once:
-   - On first run (or via `make prepare-pois`), use `osmium export` (or Python osmium if bindings easy) with tag filter for relevant features that have `name=*`:
-     - `amenity` (cafe, restaurant, school, hospital, place_of_worship, etc.)
-     - `shop`, `tourism`, `leisure` (park, garden), `historic`, `office`, `public_transport` (stop_position, station), `landuse` important ones, `natural`.
-   - Export to `output/pois.geojson` or (better) `output/pois.parquet` (geoparquet via pyarrow). Include `osm_id`, `name`, `tags` (json), geometry (point or centroid of way).
-   - This file is reused across runs. Rebuild only when OSM extract updates.
-2. For the cluster's representative_line (or its 50m buffer polygon):
-   - Spatial join / nearest / `sjoin` to find all POIs within `POI_SEARCH_RADIUS_M`.
-   - Rank them: prefer named POIs, closer ones, "important" types (park > cafe > shop). Dedup POIs that are very close to each other.
-   - Also find the nearest **named highway** or residential street within 80m for "along Foo Street" context.
-3. Generate 1-2 sentence human name, e.g.:
-   - "Footpath behind Thao Dien Park connecting to Nguyen Van Huong"
-   - "New alley near Cafe Sống 99 from residential block to main road"
-   - "Stairway shortcut in Phu My Hung greenery near crescent lake"
-   - Make it concise, title-case, no special chars for filesystem.
-4. Sanitize for directory: `slugify` (implement simple version or use `python-slugify` — add dep if clean). Add numeric suffix if name collision (`_01`, `_02`).
-5. Store in Cluster model: `human_name`, `slug`, `nearby_pois` (list of dicts with name/distance/type), `description`.
+1. Prepare a **local ways layer** once from the city PBF:
+   - `osmium tags-filter` + export for path-like highways (`footway`, `path`, `steps`, `pedestrian`, `cycleway`, `bridleway`, plus residential/service/living_street/track/unclassified for Vietnamese alleys).
+   - Write `output/osm_paths.parquet` (or geojson). Rebuild when the city PBF mtime changes.
+2. Coverage: buffer OSM ways by `EXISTING_PATH_MATCH_BUFFER_M` (~12–15m); compute fraction of representative line covered.
+3. **Missing** if coverage < `MISSING_COVERAGE_THRESHOLD` → keep. **Present** → skip (no `clusters/{slug}/`). Prefer slight over-flagging.
+4. Write `output/clusters_missing.geojson` with `osm_coverage_fraction`, `is_missing=true`.
+5. CLI: `gpx-osm filter-missing` with Rich summary of kept vs skipped.
 
-Write `output/named_clusters.geojson` with rich properties.
+### Step 4: Human-Readable Naming + POI Enrichment (`namer.py`)
+Run **only on missing-path clusters**.
 
-### Step 4+5: OSM Existence Check + Per-Cluster JOSM Bundle (`osm_extractor.py`)
-For each named cluster:
+1. POI layer once from the **same city PBF** (`osmium export` / pyosmium), reuse `output/pois.parquet`.
+2. Spatial join within `POI_SEARCH_RADIUS_M`; rank by importance + distance; nearest named highway for context.
+3. Human name + slugify for filesystem (UTF-8 / Vietnamese safe).
+4. Store `human_name`, `slug`, `nearby_pois`, `description`.
 
-1. Compute precise **buffered geometry**: `representative_line.buffer(50)` in meters (project to UTM first, buffer, back to 4326) or use shapely `buffer` with degree approx but prefer projected for accuracy.
-2. Get bbox or exact polygon of the buffer.
-3. **Extract small .osm** using `osmium extract`:
-   ```bash
-   osmium extract --bbox minlon,minlat,maxlon,maxlat \
-     --output clusters/{slug}/{slug}.osm \
-     $OSM_PBF_PATH
+Write `output/named_clusters.geojson` (missing only).
+
+### Step 5: Per-Cluster JOSM Bundle (`osm_extractor.py`)
+**Only for missing-path named clusters.** Source PBF = city extract via `resolve_osm_pbf()`.
+
+For each cluster:
+
+1. Buffer representative line by `CLUSTER_BUFFER_M` (50m) in projected meters.
+2. `osmium extract --bbox …` (or poly) → `clusters/{slug}/{slug}.osm`.
+3. Copy relevant GPX into `clusters/{slug}/gpx/`.
+4. **Write `cluster_meta.json`** (required):
+   ```json
+   {
+     "human_name": "Footpath behind Thao Dien Park",
+     "slug": "footpath_behind_thao_dien_park_01",
+     "num_gpx_traces": 12,
+     "avg_length_m": 184.6,
+     "min_length_m": 160.2,
+     "max_length_m": 210.1,
+     "total_length_m": 2215.0,
+     "representative_length_m": 195.3,
+     "osm_coverage_fraction": 0.12,
+     "is_missing": true,
+     "boundary_polygon": "osm/hcm.poly",
+     "city_slug": "hcm",
+     "osm_pbf": "osm/hcm.osm.pbf",
+     "nearby_pois": [],
+     "source_files": ["run_2024_01_05.gpx"],
+     "segment_ids": [],
+     "created_at": "ISO-8601",
+     "josm_notes": "Open the .osm then load gpx/ traces as reference; draw the missing path."
+   }
    ```
-   Or use polygon filter if you implement it (more precise, less extra data).
-   - The resulting `.osm` contains **everything** JOSM needs in that 50m halo: existing footways, roads, POIs, buildings for context, addresses, etc.
-4. Copy (or symlink if safe) **all original GPX files** (or the specific segments) belonging to this cluster into `clusters/{slug}/gpx/`.
-   - Also write a small `cluster_meta.json` with: human_name, num_gpx, total_length_m, representative_wkt, nearby_pois, created_at, source_files list, suggested JOSM workflow notes.
-5. Optional but nice: also write `representative.geojson` and `all_segments.geojson` (the raw ones in this cluster) inside the folder for QGIS preview.
+   Stable field names: **`num_gpx_traces`**, **`avg_length_m`**.
+5. Optional: `representative.geojson`, `all_segments.geojson`.
 
-After this step, user can:
-```bash
-open clusters/near_thao_dien_park_footpath_01/   # or drag .osm into JOSM
-# In JOSM: File → Open the .osm, then drag all .gpx from the gpx/ subfolder
-# Compare existing ways vs your traces → draw the missing path perfectly.
-```
+No `clusters/*` for paths already present in OSM.
 
 ### Additional Deliverables
-- **Incremental / resume support**: keep a `processed_files.json` or use mtimes + hashes. New GPX only trigger re-clustering of affected areas if you want sophistication (start simple: full reprocess is fine for personal use, <10k segments).
-- **Summary report**: at end of pipeline, print a nice table (with rich) of all clusters: name | #traces | length | #POIs nearby | .osm size.
-- **Visualization (bonus, low priority)**: `make viz` that produces `output/clusters_preview.html` (folium with colored cluster lines + POI markers + popups with names). Useful for overview before JOSM work.
-- **Validation**: basic checks (clusters must have >= MIN segments, geometry valid, etc.). Report orphans.
-- **Error resilience**: bad GPX files logged + skipped, not crash whole run. One bad segment doesn't poison a cluster.
-- **HCMC / Vietnam examples** in README and docs (Thao Dien, Phu My Hung, Nui Dinh trails, Ba Vi, etc.).
+- Incremental/resume: full reprocess is fine for personal scale.
+- Summary table of **missing** clusters: name | #traces | avg length | coverage % | .osm size; plus skipped count.
+- Optional `make viz` (folium) for missing clusters.
+- Validation: every `clusters/*/` has `cluster_meta.json` with `num_gpx_traces` + `avg_length_m`.
+- Error resilience: bad GPX skipped; missing country/city PBF fails with actionable message (`make country` / `make city` / launchd).
+- HCMC examples in README; note generic city/country switch.
 
 ## Project Structure (Create Exactly)
 ```
 gpx-osm-missing-paths/
-├── .env.example
+├── env.example
 ├── .gitignore
-├── Makefile
+├── Makefile                 # includes dotfiles/make/osm-country.mk
 ├── pyproject.toml
 ├── docker-compose.yml
 ├── README.md
@@ -156,15 +207,16 @@ gpx-osm-missing-paths/
 │   ├── data-model.md
 │   ├── osrm-setup.md
 │   ├── troubleshooting.md
-│   └── claude-code-prompt.md   # this file
+│   └── claude-code-prompt.md
 ├── src/
-│   └── gpx_osm_pipeline/
+│   └── gpx_osm_missing_paths/
 │       ├── __init__.py
 │       ├── cli.py
 │       ├── models.py
-│       ├── config.py
+│       ├── config.py          # shared cache + city poly resolution
 │       ├── gpx_processor.py
 │       ├── clusterer.py
+│       ├── missing_filter.py
 │       ├── namer.py
 │       ├── osm_extractor.py
 │       └── utils.py
@@ -173,33 +225,36 @@ gpx-osm-missing-paths/
 │   ├── sample_alley_01.gpx
 │   ├── sample_alley_02.gpx
 │   └── sample_distinct_path.gpx
-├── gpx/          # gitignored - user drops raw files here
-├── clusters/     # gitignored - final JOSM bundles
-├── output/       # gitignored - intermediate geojson, pois, reports
-└── osrm-data/    # gitignored (optional)
+├── osm/
+│   └── hcm.poly               # default city boundary (committed)
+├── gpx/                       # gitignored
+├── clusters/                  # gitignored — missing paths only
+└── output/                    # gitignored
 ```
 
 ## Quality Bar & Style
-- Every function has type hints + docstring.
-- Use `pathlib.Path` everywhere.
+- Type hints + short docstring on every public function/model.
+- `pathlib.Path` everywhere.
 - Rich console with panels, progress, tables.
-- All file writes atomic or with clear "overwrite?" logic.
-- Config is single `Config` Pydantic model loaded from .env + defaults.
-- No global state. Pure functions where possible.
-- Handle Vietnam edge cases: lots of motorbike alleys, narrow footpaths, GPS multipath in dense areas, rainy season tracks, Vietnamese POI names (UTF-8 everywhere, no mojibake).
-- Make names beautiful and useful for a runner-mapper in Saigon: reference local landmarks, "shortcut to", "behind the", "along the canal", "up the hill to pagoda".
-- After implementation, update all docs to match reality. Add a `make test-pipeline` that runs on samples/ and asserts reasonable clusters created.
+- Atomic or explicit overwrite file writes.
+- Single `Settings` pydantic model from .env + defaults.
+- No global state; pure functions where possible.
+- Vietnamese UTF-8 everywhere (POI names, slugs carefully).
+- After implementation, docs match reality. `make test-pipeline` on samples: only missing clusters under `clusters/`, each with `cluster_meta.json` (`num_gpx_traces`, `avg_length_m`).
 
 ## Final Instructions for You (Claude)
-1. Start by creating the directory structure and all empty/placeholder files with good headers.
-2. Implement models.py and config.py first (foundation).
-3. Then gpx_processor.py — make it robust and well-tested mentally with the samples.
-4. Implement clustering carefully; add comments explaining the heuristic and why it's good enough.
-5. POI naming and osmium extraction are critical for JOSM UX — make the .osm extracts small and the names delightful.
-6. Write beautiful README and CLAUDE.md.
-7. At the end, run `make lint` mentally and fix issues. Provide a short "next steps / known limitations" section.
-8. If something is ambiguous (e.g. exact clustering distance), choose the pragmatic runner-mapping-friendly default and document it.
+1. Honor existing OSM wiring: **dotfiles cache + `make city` poly clip**; do not add a second OSM download subsystem.
+2. Implement models + finish config (foundation). Include `num_gpx_traces`, `avg_length_m`, `osm_coverage_fraction` on Cluster.
+3. gpx_processor → clusterer → missing_filter (product gate) → namer → osm_extractor.
+4. Always write `cluster_meta.json` with trace count and average length; only for missing paths.
+5. README / CLAUDE.md document `make country`, `make city`, default `osm/hcm.poly`, and switching country/city.
+6. `make lint` clean. Document known limitations.
 
-You have full creative freedom on internal implementation details as long as the 5 user steps are honored, DX is excellent, and the output is genuinely useful for adding missing paths to OSM from personal run data.
+User outcomes that must hold:
+1. Cluster same physical paths from many GPX traces.
+2. **GPX + `.osm` bundles only for paths missing from OSM.**
+3. Each cluster has **`cluster_meta.json`** with **`num_gpx_traces`** and **`avg_length_m`**.
+4. OSM input is **shared `~/.cache/osm` country PBF** clipped by **city `.poly`** (default HCMC), generic for any country/city.
+5. Excellent DX for a tired runner mapping in JOSM.
 
 Now begin. Output the created files and a summary of what was built.
