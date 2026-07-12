@@ -54,9 +54,9 @@ This file contains project-specific rules and context. **Always follow these whe
 - `osm/*.poly` — Committed city boundaries (default `hcm.poly`).
 
 ## Clustering Heuristic Notes (Important Context)
-The current implementation uses [describe the hybrid HDBSCAN + overlap graph or whatever was chosen]. 
-It intentionally errs on the side of **slightly over-clustering** (user can split in JOSM) rather than leaving 15 almost-identical traces as separate clusters.
-If you need to adjust sensitivity, the primary knobs are in `.env`: `HDBSCAN_MIN_CLUSTER_SIZE`, `CLUSTER_BUFFER_M`, and the overlap % / Hausdorff thresholds inside `clusterer.py`.
+Seed-based same-stretch matching: midpoint proximity + buffered overlap + mean distance, greedy longest-first seeds (not transitive connected components — those merged whole running networks).
+`num_gpx_traces` is unique GPX files. Bundles require `MIN_CLUSTER_TRACES` (default 2) and low OSM coverage.
+Primary knobs in `.env`: `MIN_CLUSTER_TRACES`, `CLUSTER_MEAN_DISTANCE_M`, `CLUSTER_OVERLAP_FRACTION`, `CLUSTER_MIDPOINT_MAX_M`.
 
 ## JOSM User Experience Goals
 When a user opens `clusters/near_thao_dien_park_footpath_01/` they should immediately understand:

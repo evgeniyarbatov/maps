@@ -32,33 +32,61 @@ GPS cold-start points reading `0,0` — reasoning why `gpx_processor.VIETNAM_BBO
 fixes outside a generous Vietnam bounding box are dropped per-point rather than failing the
 segment.
 
+## Hundreds of clusters each with only one GPX
+
+Usually one of:
+
+1. **Traces outside the city poly** — e.g. Hanoi runs while `BOUNDARY_POLYGON=osm/hcm.poly`.
+   `gpx-osm process` drops those (see “Segments dropped (outside city)” in the summary).
+2. **One-off segments** — bundles require `MIN_CLUSTER_TRACES` distinct GPX files (default 2).
+   Raise it to `3` or `5` for a shorter, higher-confidence list.
+3. **Matching too strict** — raise `CLUSTER_MEAN_DISTANCE_M` / lower `CLUSTER_OVERLAP_FRACTION`
+   in `.env`, then re-run from `make cluster`.
+
+Map overview: open `output/clusters_missing.geojson` or `output/named_clusters.geojson` in
+geojson.io / QGIS / JOSM.
+
 ## A cluster I expected to merge stayed separate (or vice versa)
 
-Clustering thresholds live as module constants at the top of `clusterer.py`
-(`HAUSDORFF_THRESHOLD_M`, `OVERLAP_FRACTION_THRESHOLD`, `BEARING_THRESHOLD_DEG`,
-`OVERLAP_BUFFER_M`), not environment variables — tune there, then re-run `make cluster`.
-Remember clustering intentionally favors over-merging; splitting an over-merged cluster in
-JOSM is far cheaper than mapping 15 near-duplicate un-merged traces.
+Tunable in `.env`: `CLUSTER_MEAN_DISTANCE_M`, `CLUSTER_OVERLAP_FRACTION`,
+`CLUSTER_MIDPOINT_MAX_M`, `CLUSTER_OVERLAP_BUFFER_M`. Re-run from `make cluster`.
+
+Clustering is seed-based (longest segment first), not transitive connected components — two
+segments only merge if each is similar to the same seed, so whole-city running networks no
+longer collapse into one mega-cluster.
 
 **Known limitation:** `SEGMENT_CHUNK_LENGTH_M` cuts are by cumulative distance from each
 trace's own start, not aligned to physical streets, so two runs can chunk the same real path
-at different offsets — one run's chunk boundary lands mid-path while another's doesn't. That
-path may then show up as two adjacent, weakly-clustered bundles instead of one. If you see
-this, either merge them in JOSM or lower `OVERLAP_FRACTION_THRESHOLD` in `clusterer.py`.
+at different offsets. Adjacent multi-trace bundles for one long corridor are normal; map
+them as separate JOSM sessions or raise chunk length.
 
 ## A path I know is missing from OSM didn't get a JOSM bundle
 
-Check `output/clusters_raw.geojson` for `osm_coverage_fraction` on that cluster. If it's above
-`MISSING_COVERAGE_THRESHOLD` (default 0.45), an existing OSM way is being counted as covering
-it — often a `residential`/`track`/`unclassified` way that technically follows the same
-corridor. Widen `EXISTING_PATH_MATCH_BUFFER_M` down or inspect `output/osm_paths.parquet` to
-see which way is causing the match.
+Check `output/clusters_raw.geojson` for that geometry. Common reasons it was skipped:
+
+- `num_gpx_traces` &lt; `MIN_CLUSTER_TRACES` (only one file covered it)
+- `osm_coverage_fraction` ≥ `MISSING_COVERAGE_THRESHOLD` (default 0.45) — an existing
+  `residential`/`track`/`unclassified` way is treated as covering it
+- Midpoint outside `BOUNDARY_POLYGON`
+
+Inspect `output/osm_paths.parquet` if coverage looks wrong.
 
 ## Stale `output/osm_paths.parquet` / `pois.parquet` / `named_ways.parquet` after re-clipping the city
 
 These caches are invalidated by comparing file mtimes: if the cache file's mtime is older than
 the city PBF's mtime, it's rebuilt automatically. If you replace the PBF without changing its
 mtime (e.g. restoring from a backup), delete the relevant `output/*.parquet` file manually.
+
+## `.osm` extract looks empty or “broken” in JOSM
+
+Common causes:
+
+1. **Empty extract** — cluster geometry outside the city PBF (e.g. Hanoi GPX while using
+   `osm/hcm.osm.pbf`). The pipeline now drops out-of-city segments and refuses to write an
+   empty `.osm`. Re-run `make process` … `make extract`.
+2. **Incomplete multipolygons** — older extracts kept country/admin relations with most
+   members missing; JOSM draws those as huge red incomplete outlines. Current extracts strip
+   incomplete relations after `osmium extract`. Re-run `make extract`.
 
 ## Vietnamese names look garbled in file names or JOSM
 

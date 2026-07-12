@@ -1,40 +1,37 @@
 """Group GPX segments that trace the same physical path.
 
-Heuristic (documented in ``docs/architecture.md``): rough spatial bucketing via
-``geopandas.sjoin`` on buffered geometries, then within-bucket pairwise checks
-(Hausdorff distance + buffered overlap fraction + bearing similarity), then
-connected components over the resulting proximity graph. Intentionally errs on
-the side of over-clustering — a user can split a cluster in JOSM far more
-easily than they can find 15 near-duplicate traces scattered across separate
-directories.
+Heuristic (documented in ``docs/architecture.md``):
+
+1. Project segments to a shared local UTM (meters).
+2. Prefilter candidate pairs by midpoint proximity (spatial join).
+3. Two segments match when they cover the same stretch of ground:
+   midpoints close, high buffered overlap of the shorter line, and low
+   mean point-to-line distance (tolerant of urban GPS noise, not of
+   merely parallel nearby streets).
+4. Seed-based greedy assignment (longest segment first as representative)
+   so matches do not chain transitively along a whole running network into
+   one city-spanning mega-cluster.
+
+``num_gpx_traces`` counts unique source GPX files, not chunked segments.
 """
 
 from __future__ import annotations
 
+from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
 
 import geopandas as gpd
-import networkx as nx
 import pandas as pd
 from pyproj import Transformer
 from shapely.geometry import LineString
 
 from gpx_osm_missing_paths.config import Settings
 from gpx_osm_missing_paths.models import Cluster, GPXSegment, save_clusters_state
-from gpx_osm_missing_paths.utils import bearing_diff_deg, line_bearing_deg, utm_epsg_for
+from gpx_osm_missing_paths.utils import utm_epsg_for
 
-# Candidate-pair prefilter: only segments whose buffers touch are checked further.
-SJOIN_BUFFER_M = 30.0
-# Buffer used when measuring what fraction of the shorter segment overlaps the longer one.
-OVERLAP_BUFFER_M = 10.0
-# Two segments connect if they are this close (Hausdorff, in meters)...
-HAUSDORFF_THRESHOLD_M = 25.0
-# ...and this much of the shorter segment's length falls inside the other's overlap buffer.
-OVERLAP_FRACTION_THRESHOLD = 0.40
-# ...or, alternatively, they are near-collinear (bearing diff, treating reverse direction
-# as identical) below this many degrees while still meeting the overlap fraction.
-BEARING_THRESHOLD_DEG = 30.0
+# Sample count for mean point-to-line distance (endpoints + interior).
+_MEAN_DIST_SAMPLES = 11
 
 
 @dataclass
@@ -43,7 +40,9 @@ class ClusterSummary:
 
     segments_in: int = 0
     clusters_out: int = 0
-    largest_cluster_size: int = 0
+    multi_trace_clusters: int = 0
+    largest_cluster_segments: int = 0
+    largest_cluster_traces: int = 0
     singleton_clusters: int = 0
 
 
@@ -60,7 +59,23 @@ def _project_all(segments: list[GPXSegment]) -> tuple[dict[str, LineString], int
     return projected, epsg
 
 
-def _overlap_fraction(a: LineString, b: LineString) -> float:
+def _mean_distance_m(a: LineString, b: LineString, samples: int = _MEAN_DIST_SAMPLES) -> float:
+    """Symmetric mean point-to-line distance (max of the two directions)."""
+    if a.is_empty or b.is_empty:
+        return float("inf")
+    n = max(samples, 2)
+
+    def _directed(src: LineString, dst: LineString) -> float:
+        total = 0.0
+        for i in range(n):
+            t = i / (n - 1)
+            total += src.interpolate(t, normalized=True).distance(dst)
+        return total / n
+
+    return max(_directed(a, b), _directed(b, a))
+
+
+def _overlap_fraction(a: LineString, b: LineString, buffer_m: float) -> float:
     """Fraction of the shorter line's length that falls within a buffer of the other."""
     len_a, len_b = a.length, b.length
     if len_a == 0 or len_b == 0:
@@ -69,65 +84,104 @@ def _overlap_fraction(a: LineString, b: LineString) -> float:
         shorter, longer, shorter_len = a, b, len_a
     else:
         shorter, longer, shorter_len = b, a, len_b
-    overlap_len = shorter.intersection(longer.buffer(OVERLAP_BUFFER_M)).length
+    overlap_len = shorter.intersection(longer.buffer(buffer_m)).length
     return float(overlap_len / shorter_len)
 
 
-def _should_connect(a: LineString, b: LineString) -> bool:
-    overlap_frac = _overlap_fraction(a, b)
-    if overlap_frac <= OVERLAP_FRACTION_THRESHOLD:
+def _should_match(
+    a: LineString,
+    b: LineString,
+    *,
+    overlap_buffer_m: float,
+    overlap_fraction: float,
+    mean_distance_m: float,
+    midpoint_max_m: float,
+) -> bool:
+    """True when a and b cover the same physical stretch (not merely nearby)."""
+    mid_a = a.interpolate(0.5, normalized=True)
+    mid_b = b.interpolate(0.5, normalized=True)
+    if mid_a.distance(mid_b) > midpoint_max_m:
         return False
-    hausdorff_m = a.hausdorff_distance(b)
-    if hausdorff_m < HAUSDORFF_THRESHOLD_M:
-        return True
-    bearing_diff = bearing_diff_deg(line_bearing_deg(a), line_bearing_deg(b))
-    return bearing_diff <= BEARING_THRESHOLD_DEG
+    if _overlap_fraction(a, b, overlap_buffer_m) < overlap_fraction:
+        return False
+    return _mean_distance_m(a, b) <= mean_distance_m
 
 
-def _candidate_pairs(projected: dict[str, LineString]) -> list[tuple[str, str]]:
-    """Prefilter pairs via a spatial join on buffered geometries (avoids O(n^2))."""
+def _midpoint_candidates(
+    projected: dict[str, LineString], midpoint_max_m: float
+) -> dict[str, set[str]]:
+    """For each segment id, other ids whose midpoints fall within ``midpoint_max_m``."""
     ids = list(projected.keys())
+    midpoints = {
+        sid: projected[sid].interpolate(0.5, normalized=True) for sid in ids
+    }
     gdf = gpd.GeoDataFrame(
         {"segment_id": ids},
-        geometry=[projected[i].buffer(SJOIN_BUFFER_M) for i in ids],
+        geometry=[midpoints[sid].buffer(midpoint_max_m) for sid in ids],
     )
     joined = gpd.sjoin(gdf, gdf, how="inner", predicate="intersects")
-    pairs = set()
+    candidates: dict[str, set[str]] = defaultdict(set)
     for left, right in zip(joined["segment_id_left"], joined["segment_id_right"], strict=True):
-        if left < right:
-            pairs.add((left, right))
-        elif right < left:
-            pairs.add((right, left))
-    return sorted(pairs)
+        if left != right:
+            candidates[left].add(right)
+    return candidates
 
 
-def cluster_segments(segments: list[GPXSegment]) -> tuple[dict[str, str], ClusterSummary]:
+def cluster_segments(
+    segments: list[GPXSegment], settings: Settings
+) -> tuple[dict[str, str], ClusterSummary]:
     """Assign each segment a ``cluster_id``. Returns the mapping and summary counters."""
     summary = ClusterSummary(segments_in=len(segments))
     if not segments:
         return {}, summary
 
     projected, _epsg = _project_all(segments)
+    candidates = _midpoint_candidates(projected, settings.cluster_midpoint_max_m)
 
-    graph = nx.Graph()
-    graph.add_nodes_from(projected.keys())
-    for left, right in _candidate_pairs(projected):
-        if _should_connect(projected[left], projected[right]):
-            graph.add_edge(left, right)
-
-    components = sorted(
-        (sorted(component) for component in nx.connected_components(graph)),
-        key=lambda component: component[0],
+    # Longest first: better seed geometry for a physical stretch.
+    order = sorted(
+        projected.keys(),
+        key=lambda sid: projected[sid].length,
+        reverse=True,
     )
+    remaining = set(projected.keys())
+    components: list[list[str]] = []
+
+    for seed in order:
+        if seed not in remaining:
+            continue
+        members = [seed]
+        remaining.remove(seed)
+        seed_geom = projected[seed]
+        for other in sorted(candidates[seed] & remaining):
+            if _should_match(
+                seed_geom,
+                projected[other],
+                overlap_buffer_m=settings.cluster_overlap_buffer_m,
+                overlap_fraction=settings.cluster_overlap_fraction,
+                mean_distance_m=settings.cluster_mean_distance_m,
+                midpoint_max_m=settings.cluster_midpoint_max_m,
+            ):
+                members.append(other)
+                remaining.remove(other)
+        components.append(sorted(members))
+
+    components.sort(key=lambda component: component[0])
 
     segment_to_cluster: dict[str, str] = {}
+    id_to_file = {s.segment_id: s.original_file for s in segments}
     for index, component in enumerate(components):
         cluster_id = f"cluster_{index:04d}"
         for segment_id in component:
             segment_to_cluster[segment_id] = cluster_id
-        summary.largest_cluster_size = max(summary.largest_cluster_size, len(component))
-        if len(component) == 1:
+        n_seg = len(component)
+        n_traces = len({id_to_file[sid] for sid in component})
+        summary.largest_cluster_segments = max(summary.largest_cluster_segments, n_seg)
+        summary.largest_cluster_traces = max(summary.largest_cluster_traces, n_traces)
+        if n_traces == 1:
             summary.singleton_clusters += 1
+        else:
+            summary.multi_trace_clusters += 1
 
     summary.clusters_out = len(components)
     return segment_to_cluster, summary
@@ -147,19 +201,20 @@ def build_clusters(
         lengths = [m.length_m for m in members]
         representative = max(members, key=lambda m: m.length_m)
         bounds = gpd.GeoSeries([m.geometry for m in members]).total_bounds
+        source_files = sorted({m.original_file for m in members})
         clusters.append(
             Cluster(
                 cluster_id=cluster_id,
                 segment_ids=[m.segment_id for m in members],
                 representative_line=representative.geometry,
-                num_gpx_traces=len(members),
+                num_gpx_traces=len(source_files),
                 avg_length_m=sum(lengths) / len(lengths),
                 min_length_m=min(lengths),
                 max_length_m=max(lengths),
                 total_length_m=sum(lengths),
                 representative_length_m=representative.length_m,
                 bbox=(bounds[0], bounds[1], bounds[2], bounds[3]),
-                source_files=sorted({m.original_file for m in members}),
+                source_files=source_files,
                 created_at=datetime.now(),
             )
         )
@@ -185,7 +240,7 @@ def clusters_to_geodataframe(clusters: list[Cluster]) -> gpd.GeoDataFrame:
 
 def cluster(settings: Settings, segments: list[GPXSegment]) -> tuple[list[Cluster], ClusterSummary]:
     """Cluster segments and write ``output/clusters_raw.geojson`` + assignment table."""
-    segment_to_cluster, summary = cluster_segments(segments)
+    segment_to_cluster, summary = cluster_segments(segments, settings)
     clusters = build_clusters(segments, segment_to_cluster)
 
     settings.output_dir.mkdir(parents=True, exist_ok=True)

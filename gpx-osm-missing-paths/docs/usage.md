@@ -50,13 +50,13 @@ Copy `env.example` to `.env` and adjust. All are optional; defaults target HCMC.
 | `CLUSTER_BUFFER_M` | 50 | Buffer around a cluster's representative line for the `.osm` extract |
 | `POI_SEARCH_RADIUS_M` | 50 | How far to look for naming landmarks |
 | `MIN_POI_DISTANCE_M` | 10 | Minimum separation between selected POIs (dedup near-duplicates) |
-| `HDBSCAN_MIN_CLUSTER_SIZE` / `HDBSCAN_MIN_SAMPLES` | 8 / 3 | Reserved for a future density-based prefilter; the current clusterer uses a proximity graph (see `docs/architecture.md`) |
+| `CLUSTER_MIDPOINT_MAX_M` | 200 | Max midpoint separation (m) for candidate pairs |
+| `CLUSTER_OVERLAP_BUFFER_M` | 20 | Buffer when measuring overlap of the shorter line |
+| `CLUSTER_OVERLAP_FRACTION` | 0.45 | Min fraction of shorter line that must sit near the other |
+| `CLUSTER_MEAN_DISTANCE_M` | 20 | Max mean point-to-line distance (m) to treat as same stretch |
+| `MIN_CLUSTER_TRACES` | 2 | Min distinct GPX files before a poorly covered cluster becomes a JOSM bundle (raise to 3 for a shorter list) |
 | `EXISTING_PATH_MATCH_BUFFER_M` | 12 | Buffer used when computing OSM coverage |
-| `MISSING_COVERAGE_THRESHOLD` | 0.45 | Below this fraction covered → cluster is "missing" |
-
-Fine-grained clustering thresholds (Hausdorff distance, overlap fraction, bearing similarity)
-are module-level constants in `clusterer.py`, not environment variables — see the comment
-block at the top of that file.
+| `MISSING_COVERAGE_THRESHOLD` | 0.45 | Below this fraction covered → cluster is a missing-path candidate |
 
 ## Country / City Switching
 

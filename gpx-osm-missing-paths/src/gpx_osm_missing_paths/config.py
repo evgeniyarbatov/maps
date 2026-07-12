@@ -57,8 +57,19 @@ class Settings(BaseSettings):
     cluster_buffer_m: float = 50.0
     poi_search_radius_m: float = 50.0
     min_poi_distance_m: float = 10.0
-    hdbscan_min_cluster_size: int = 8
-    hdbscan_min_samples: int = 3
+
+    # Clustering: same physical stretch (urban GPS ~5–15m noise).
+    # Midpoint search radius for candidate pairs (meters, UTM).
+    cluster_midpoint_max_m: float = 200.0
+    # Buffer when measuring how much of the shorter line sits near the longer one.
+    cluster_overlap_buffer_m: float = 20.0
+    # Min fraction of the shorter line that must fall inside that buffer.
+    cluster_overlap_fraction: float = 0.45
+    # Max mean point-to-line distance (m) for two segments to match.
+    cluster_mean_distance_m: float = 20.0
+    # JOSM bundles / missing map: require this many distinct GPX files.
+    # One-off chunks are noise for a tired mapper; raise to 3 for a tighter list.
+    min_cluster_traces: int = 2
 
     existing_path_match_buffer_m: float = 12.0
     missing_coverage_threshold: float = 0.45

@@ -1,6 +1,6 @@
 [project]
 name = "gpx-osm-missing-paths"
-version = "0.1.0"
+version = "0.2.0"
 description = "Pipeline to cluster personal GPX running traces, identify potential missing footpaths in local OSM extract, generate JOSM-ready .osm extracts + bundled GPX per logical path cluster, named from nearby POIs."
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
@@ -22,7 +22,6 @@ dependencies = [
   "typer>=0.12.3",
   "tqdm>=4.66.4",
   "rich>=13.7.1",
-  "networkx>=3.3",
 ]
 
 [project.optional-dependencies]
@@ -64,7 +63,7 @@ warn_unused_ignores = true
 disallow_untyped_defs = true
 
 [[tool.mypy.overrides]]
-module = ["geopandas.*", "shapely.*", "pandas.*", "networkx.*", "osmium.*", "gpxpy.*"]
+module = ["geopandas.*", "shapely.*", "pandas.*", "osmium.*", "gpxpy.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

@@ -10,10 +10,41 @@ import unicodedata
 from pathlib import Path
 from typing import Any
 
-from shapely.geometry import LineString
+from shapely.geometry import LineString, Polygon
 from shapely.geometry.base import BaseGeometry
 
 EARTH_RADIUS_M = 6_371_000.0
+
+
+def load_osmconvert_poly(path: Path) -> Polygon:
+    """Parse an osmconvert ``.poly`` boundary into a WGS84 shapely Polygon.
+
+    Format: header line(s), then one or more rings of ``lon lat`` rows separated
+    by ``END`` (final ``END`` closes the file). Only the first outer ring is used.
+    """
+    text = path.read_text(encoding="utf-8", errors="replace")
+    coords: list[tuple[float, float]] = []
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        if line.upper() == "END":
+            if coords:
+                break
+            continue
+        parts = line.split()
+        if len(parts) < 2:
+            continue
+        try:
+            lon, lat = float(parts[0]), float(parts[1])
+        except ValueError:
+            continue
+        coords.append((lon, lat))
+    if len(coords) < 3:
+        raise ValueError(f"No usable ring in poly file: {path}")
+    if coords[0] != coords[-1]:
+        coords.append(coords[0])
+    return Polygon(coords)
 
 
 def haversine_m(lon1: float, lat1: float, lon2: float, lat2: float) -> float:

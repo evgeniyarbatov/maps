@@ -91,6 +91,7 @@ class MissingFilterSummary:
     clusters_in: int = 0
     missing_kept: int = 0
     covered_skipped: int = 0
+    few_traces_skipped: int = 0
 
 
 def _project_paths(paths: gpd.GeoDataFrame, epsg: int) -> gpd.GeoDataFrame:
@@ -137,10 +138,15 @@ def filter_missing(
         line_utm = LineString([to_utm.transform(x, y) for x, y in c.representative_line.coords])
         coverage = _coverage_fraction(line_utm, paths_utm, settings.existing_path_match_buffer_m)
         c.osm_coverage_fraction = coverage
-        c.is_missing = coverage < settings.missing_coverage_threshold
-        if c.is_missing:
+        poorly_covered = coverage < settings.missing_coverage_threshold
+        if poorly_covered and c.num_gpx_traces < settings.min_cluster_traces:
+            c.is_missing = False
+            summary.few_traces_skipped += 1
+        elif poorly_covered:
+            c.is_missing = True
             summary.missing_kept += 1
         else:
+            c.is_missing = False
             summary.covered_skipped += 1
 
     missing = [c for c in clusters if c.is_missing]

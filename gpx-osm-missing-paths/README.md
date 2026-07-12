@@ -99,7 +99,8 @@ Open the `.osm` in JOSM, load the GPX files from the subfolder, and you have per
 Edit `.env`:
 
 - `MIN_SEGMENT_LENGTH_M` — ignore GPS noise / very short detours
-- `HDBSCAN_MIN_CLUSTER_SIZE` — how many traces needed before something becomes a "cluster" (raise for noisy data, lower if you have few repeats)
+- `MIN_CLUSTER_TRACES` — min distinct GPX files before a path becomes a JOSM bundle (default 2; raise to 3 for fewer, higher-confidence paths)
+- `CLUSTER_MEAN_DISTANCE_M` / `CLUSTER_OVERLAP_FRACTION` — how tightly two chunks must align to count as the same stretch
 - `CLUSTER_BUFFER_M` / `POI_SEARCH_RADIUS_M` — usually 50m is perfect for urban footpaths
 - `SIMPLIFY_TOLERANCE_M` — 3-5m works well for running GPS
 

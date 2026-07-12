@@ -68,6 +68,9 @@ Pydantic v2 models:
 ### 2. GPX Processing
 - Turn messy real-world GPX into clean LineStrings in EPSG:4326.
 - Project to local UTM only when meter-accurate buffering/length is needed.
+- **City clip.** Segments whose midpoint falls outside `BOUNDARY_POLYGON` are dropped so
+  runs from another city (e.g. Hanoi GPX while mapping HCMC) never appear as "missing"
+  against the wrong OSM extract.
 - **Chunk long traces.** A run can be 30km and cross dozens of streets; clustering and the
   missing-path filter both need street-sized geometry, not whole-run geometry, or a single
   missing 500m alley gets averaged away inside an otherwise 95%-covered 20km recording. After
@@ -76,14 +79,15 @@ Pydantic v2 models:
   boundary point and there's no gap between them. Each chunk becomes its own `GPXSegment`.
 
 ### 3. Clustering Strategy
-Hybrid spatial index + overlap graph (or HDBSCAN on midpoints + refine):
+Seed-based same-stretch matching (not transitive connected components):
 
-1. Rough spatial bucketing on midpoints
-2. Within-bucket proximity: buffer overlap + Hausdorff + bearing
-3. Connected components → `cluster_id`
-4. Representative geometry (longest segment for v1)
+1. Project segments to local UTM
+2. Candidate pairs by midpoint proximity (`CLUSTER_MIDPOINT_MAX_M`)
+3. Match when midpoints are close, buffered overlap of the shorter line is high, and mean point-to-line distance is low (urban GPS tolerant; Hausdorff on 750m lines is not)
+4. Greedy assignment: longest segment first as seed; only segments similar to that seed join the cluster (avoids chaining an entire running network into one mega-cluster)
+5. Representative geometry = longest member; `num_gpx_traces` = unique source GPX files
 
-Err on slight over-clustering; user can split in JOSM.
+JOSM bundles further require `MIN_CLUSTER_TRACES` (default 2) and low OSM coverage.
 
 ### 4. Missing-path filter
 Compare cluster representative geometry to path-like highways in the **city** PBF. Only low-coverage clusters become JOSM bundles.

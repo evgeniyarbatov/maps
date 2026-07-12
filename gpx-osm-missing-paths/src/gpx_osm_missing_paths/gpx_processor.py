@@ -13,10 +13,17 @@ import gpxpy.gpx
 import pandas as pd
 from pyproj import Transformer
 from shapely.geometry import LineString
+from shapely.geometry.base import BaseGeometry
 
 from gpx_osm_missing_paths.config import Settings
 from gpx_osm_missing_paths.models import GPXSegment
-from gpx_osm_missing_paths.utils import geometry_bbox, haversine_m, line_length_m, utm_epsg_for
+from gpx_osm_missing_paths.utils import (
+    geometry_bbox,
+    haversine_m,
+    line_length_m,
+    load_osmconvert_poly,
+    utm_epsg_for,
+)
 
 # Generous Vietnam bounding box; points outside are almost certainly bad fixes
 # (cold-start GPS jumps to 0,0 or another continent). Not a hard city boundary.
@@ -34,6 +41,7 @@ class ProcessSummary:
     segments_kept: int = 0
     segments_dropped_short: int = 0
     segments_dropped_empty: int = 0
+    segments_dropped_outside_city: int = 0
     total_km: float = 0.0
 
 
@@ -230,11 +238,26 @@ def segments_to_geodataframe(segments: list[GPXSegment]) -> gpd.GeoDataFrame:
     return gpd.GeoDataFrame(rows, geometry="geometry", crs="EPSG:4326")
 
 
+def _segment_in_city(segment: GPXSegment, city: BaseGeometry) -> bool:
+    """True when the segment midpoint falls inside the city boundary."""
+    mid = segment.geometry.interpolate(0.5, normalized=True)
+    return bool(city.covers(mid))
+
+
 def process(settings: Settings) -> tuple[list[GPXSegment], ProcessSummary]:
-    """Discover, parse, and clean all GPX files under ``settings.gpx_dir``."""
+    """Discover, parse, and clean all GPX files under ``settings.gpx_dir``.
+
+    When ``boundary_polygon`` exists, segments whose midpoint lies outside the
+    city are dropped so Hanoi (or other) runs never become "missing" against
+    an HCMC OSM clip.
+    """
     files = discover_gpx_files(settings.gpx_dir)
     summary = ProcessSummary(files_seen=len(files))
     all_segments: list[GPXSegment] = []
+
+    city: BaseGeometry | None = None
+    if settings.boundary_polygon.is_file():
+        city = load_osmconvert_poly(settings.boundary_polygon)
 
     for path in files:
         try:
@@ -244,6 +267,14 @@ def process(settings: Settings) -> tuple[list[GPXSegment], ProcessSummary]:
         except Exception:
             summary.files_failed += 1
             continue
+        if city is not None:
+            kept: list[GPXSegment] = []
+            for segment in segments:
+                if _segment_in_city(segment, city):
+                    kept.append(segment)
+                else:
+                    summary.segments_dropped_outside_city += 1
+            segments = kept
         all_segments.extend(segments)
         summary.segments_dropped_short += dropped_short
         summary.segments_dropped_empty += dropped_empty

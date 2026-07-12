@@ -72,6 +72,7 @@ def process() -> None:
     table.add_row("Segments kept", str(summary.segments_kept))
     table.add_row("Segments dropped (too short)", str(summary.segments_dropped_short))
     table.add_row("Segments dropped (empty)", str(summary.segments_dropped_empty))
+    table.add_row("Segments dropped (outside city)", str(summary.segments_dropped_outside_city))
     table.add_row("Total distance", f"{summary.total_km:.1f} km")
     console.print(table)
 
@@ -99,8 +100,10 @@ def cluster() -> None:
     table.add_column("Value", justify="right")
     table.add_row("Segments in", str(summary.segments_in))
     table.add_row("Clusters out", str(summary.clusters_out))
-    table.add_row("Largest cluster (traces)", str(summary.largest_cluster_size))
-    table.add_row("Singleton clusters", str(summary.singleton_clusters))
+    table.add_row("Multi-trace clusters", str(summary.multi_trace_clusters))
+    table.add_row("Singleton clusters (1 GPX)", str(summary.singleton_clusters))
+    table.add_row("Largest cluster (GPX files)", str(summary.largest_cluster_traces))
+    table.add_row("Largest cluster (segments)", str(summary.largest_cluster_segments))
     console.print(table)
     console.print(f"[green]Wrote {settings.output_dir / 'clusters_raw.geojson'}[/green]")
 
@@ -123,8 +126,12 @@ def filter_missing() -> None:
     table.add_column("Metric")
     table.add_column("Value", justify="right")
     table.add_row("Clusters in", str(summary.clusters_in))
-    table.add_row("Missing (kept)", str(summary.missing_kept))
+    table.add_row("Missing multi-trace (kept)", str(summary.missing_kept))
     table.add_row("Already covered (skipped)", str(summary.covered_skipped))
+    table.add_row(
+        f"Few traces (<{settings.min_cluster_traces} GPX, skipped)",
+        str(summary.few_traces_skipped),
+    )
     console.print(table)
 
 
@@ -147,7 +154,8 @@ def name() -> None:
     table.add_column("Traces", justify="right")
     table.add_column("Avg length", justify="right")
     table.add_column("Coverage", justify="right")
-    for c in sorted((c for c in clusters if c.is_missing), key=lambda c: -c.num_gpx_traces):
+    missing = sorted((c for c in clusters if c.is_missing), key=lambda c: -c.num_gpx_traces)
+    for c in missing:
         table.add_row(
             c.human_name or c.cluster_id,
             str(c.num_gpx_traces),
@@ -155,6 +163,11 @@ def name() -> None:
             f"{(c.osm_coverage_fraction or 0.0):.0%}",
         )
     console.print(table)
+    if missing:
+        console.print(
+            f"[dim]{len(missing)} missing clusters "
+            f"(sorted by GPX file count; open output/named_clusters.geojson on a map)[/dim]"
+        )
     console.print(
         f"[dim]{summary.clusters_named} named with POI context, "
         f"{summary.clusters_without_poi} with no nearby POI[/dim]"
