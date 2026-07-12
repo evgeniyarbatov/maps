@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="gpx-osm-missing-paths-samples" xmlns="http://www.topografix.com/GPX/1/1">
+  <trk>
+    <name>Riverside walk near Bach Dang wharf</name>
+    <trkseg>
+      <trkpt lat="10.772000" lon="106.705000"><ele>3.0</ele><time>2024-03-02T22:00:00Z</time></trkpt>
+      <trkpt lat="10.772180" lon="106.705050"><ele>3.1</ele><time>2024-03-02T22:00:15Z</time></trkpt>
+      <trkpt lat="10.772360" lon="106.705020"><ele>3.0</ele><time>2024-03-02T22:00:30Z</time></trkpt>
+      <trkpt lat="10.772540" lon="106.705080"><ele>2.9</ele><time>2024-03-02T22:00:45Z</time></trkpt>
+      <trkpt lat="10.772720" lon="106.705040"><ele>3.0</ele><time>2024-03-02T22:01:00Z</time></trkpt>
+      <trkpt lat="10.772900" lon="106.705100"><ele>3.1</ele><time>2024-03-02T22:01:15Z</time></trkpt>
+      <trkpt lat="10.773080" lon="106.705060"><ele>3.0</ele><time>2024-03-02T22:01:30Z</time></trkpt>
+      <trkpt lat="10.773260" lon="106.705110"><ele>2.9</ele><time>2024-03-02T22:01:45Z</time></trkpt>
+      <trkpt lat="10.773440" lon="106.705070"><ele>3.0</ele><time>2024-03-02T22:02:00Z</time></trkpt>
+      <trkpt lat="10.773620" lon="106.705120"><ele>3.1</ele><time>2024-03-02T22:02:15Z</time></trkpt>
+      <trkpt lat="10.773800" lon="106.705090"><ele>3.0</ele><time>2024-03-02T22:02:30Z</time></trkpt>
+      <trkpt lat="10.773980" lon="106.705130"><ele>2.9</ele><time>2024-03-02T22:02:45Z</time></trkpt>
+    </trkseg>
+  </trk>
+</gpx>

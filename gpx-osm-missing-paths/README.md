@@ -93,7 +93,6 @@ Open the `.osm` in JOSM, load the GPX files from the subfolder, and you have per
   - macOS: `brew install osmium-tool osmctools` (or equivalent providing `osmconvert`)
   - Ubuntu/Debian: `apt install osmium-tool osmctools`
 - Shared country OSM cache from **dotfiles** (`com.arbatov.fetch-osm` → `~/.cache/osm/…`)
-- Docker (optional, local OSRM only)
 
 ## Tuning for Your City / Data
 
@@ -108,15 +107,8 @@ See `docs/usage.md` for full parameter reference and recommended values for HCMC
 
 ## Advanced / Optional
 
-- **Local OSRM**: See `docs/osrm-setup.md` for cutting a small HCMC bbox and building a routing graph. Then you can experiment with map-matching to further clean traces or detect "off-OSM" segments automatically.
 - **Incremental runs**: The pipeline is designed to be re-runnable. Add new GPX files to `gpx/` and re-run `make pipeline`. (Full reprocess is fast enough for personal collections of a few thousand files.)
 - **Visualization**: `make viz` (if implemented) produces a folium HTML overview of all clusters.
-
-## Project Status
-
-This project was scaffolded with a comprehensive spec. The core implementation (processor, clusterer, namer, extractor + CLI + docs) is intended to be generated/completed by feeding `docs/claude-code-prompt.md` into Claude (or Cursor/Windsurf).
-
-If you are reading this after generation, the pipeline should be fully functional on sample data and ready for your real GPX collection.
 
 ## Contributing & Philosophy
 

@@ -20,6 +20,7 @@ def test_country_path_uses_cache_dir(tmp_path: Path) -> None:
         osm_cache_dir=cache,
         osm_country_file="vietnam-latest.osm.pbf",
         boundary_polygon=Path("osm/hcm.poly"),
+        osm_dir=tmp_path / "osm",  # isolate from any real osm/hcm.osm.pbf in the repo cwd
         osm_pbf_path=None,
     )
     assert settings.country_osm_path == pbf.resolve()

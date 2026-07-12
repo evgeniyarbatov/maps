@@ -1,5 +1,6 @@
 # Local data
-gpx/
+gpx/*
+!gpx/.gitkeep
 clusters/
 output/
 data/processed/

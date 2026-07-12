@@ -14,7 +14,7 @@ CITY_OSM := $(OSM_DIR)/$(CITY).osm
 
 .PHONY: help setup install country city osm-check \
 	process cluster filter-missing name extract pipeline \
-	clean test lint osrm-prepare osrm-start osrm-stop
+	clean test lint
 
 help: ## Show this help
 	@grep -hE '^[a-zA-Z_-]+:.*?## .*$$' $(firstword $(MAKEFILE_LIST)) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -83,18 +83,3 @@ test: ## Run pytest with coverage
 lint: ## Ruff + mypy
 	uv run ruff check src tests
 	uv run mypy src
-
-osrm-prepare: ## Prepare OSRM from city PBF (optional)
-	@test -f $(CITY_OSM_PBF) || (echo "Missing $(CITY_OSM_PBF); run: make city" >&2; exit 1)
-	@mkdir -p data/osrm
-	@cp -f $(CITY_OSM_PBF) data/osrm/region.osm.pbf
-	docker compose run --rm osrm osrm-extract -p /opt/foot.lua /data/region.osm.pbf
-	docker compose run --rm osrm osrm-contract /data/region.osrm
-	@echo "✅ OSRM prepared. Start with: make osrm-start"
-
-osrm-start: ## Start OSRM routed container
-	docker compose up -d osrm
-	@echo "OSRM match API at http://localhost:5000/match/v1/foot/..."
-
-osrm-stop:
-	docker compose down osrm

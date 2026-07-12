@@ -12,6 +12,8 @@ dependencies = [
   "gpxpy>=1.6.2",
   "geopandas>=1.0.1",
   "shapely>=2.0.6",
+  "pyproj>=3.6.1",
+  "pyarrow>=17.0.0",
   "osmium>=4.0.2",
   "pandas>=2.2.2",
   "pydantic>=2.8.2",
@@ -60,6 +62,10 @@ strict = true
 warn_return_any = true
 warn_unused_ignores = true
 disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = ["geopandas.*", "shapely.*", "pandas.*", "networkx.*", "osmium.*", "gpxpy.*"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

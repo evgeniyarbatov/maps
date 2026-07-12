@@ -58,9 +58,6 @@ class Settings(BaseSettings):
     existing_path_match_buffer_m: float = 12.0
     missing_coverage_threshold: float = 0.45
 
-    osrm_url: str = "http://localhost:5000"
-    use_osrm_match: bool = False
-
     @field_validator(
         "osm_cache_dir",
         "boundary_polygon",

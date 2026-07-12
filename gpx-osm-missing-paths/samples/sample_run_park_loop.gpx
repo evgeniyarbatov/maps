@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Garmin Connect" xmlns="http://www.topografix.com/GPX/1/1"
+     xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1">
+  <trk>
+    <name>Thao Dien Park loop</name>
+    <trkseg>
+      <trkpt lat="10.805000" lon="106.728000">
+        <ele>8.1</ele><time>2024-02-01T21:30:00Z</time>
+        <extensions><gpxtpx:TrackPointExtension><gpxtpx:hr>118</gpxtpx:hr></gpxtpx:TrackPointExtension></extensions>
+      </trkpt>
+      <trkpt lat="10.805300" lon="106.728120">
+        <ele>8.0</ele><time>2024-02-01T21:30:20Z</time>
+        <extensions><gpxtpx:TrackPointExtension><gpxtpx:hr>121</gpxtpx:hr></gpxtpx:TrackPointExtension></extensions>
+      </trkpt>
+      <trkpt lat="10.805550" lon="106.728300">
+        <ele>8.2</ele><time>2024-02-01T21:30:40Z</time>
+        <extensions><gpxtpx:TrackPointExtension><gpxtpx:hr>124</gpxtpx:hr></gpxtpx:TrackPointExtension></extensions>
+      </trkpt>
+      <trkpt lat="10.805700" lon="106.728550">
+        <ele>8.1</ele><time>2024-02-01T21:31:00Z</time>
+        <extensions><gpxtpx:TrackPointExtension><gpxtpx:hr>126</gpxtpx:hr></gpxtpx:TrackPointExtension></extensions>
+      </trkpt>
+      <trkpt lat="10.805650" lon="106.728800">
+        <ele>7.9</ele><time>2024-02-01T21:31:20Z</time>
+        <extensions><gpxtpx:TrackPointExtension><gpxtpx:hr>125</gpxtpx:hr></gpxtpx:TrackPointExtension></extensions>
+      </trkpt>
+      <trkpt lat="10.805400" lon="106.728950">
+        <ele>7.8</ele><time>2024-02-01T21:31:40Z</time>
+        <extensions><gpxtpx:TrackPointExtension><gpxtpx:hr>123</gpxtpx:hr></gpxtpx:TrackPointExtension></extensions>
+      </trkpt>
+    </trkseg>
+    <!-- Runner paused at a bench; Garmin/Strava emit a new trkseg rather than one continuous line. -->
+    <trkseg>
+      <trkpt lat="10.805400" lon="106.728950">
+        <ele>7.8</ele><time>2024-02-01T21:34:10Z</time>
+        <extensions><gpxtpx:TrackPointExtension><gpxtpx:hr>110</gpxtpx:hr></gpxtpx:TrackPointExtension></extensions>
+      </trkpt>
+      <trkpt lat="10.805150" lon="106.728780">
+        <ele>7.9</ele><time>2024-02-01T21:34:30Z</time>
+        <extensions><gpxtpx:TrackPointExtension><gpxtpx:hr>115</gpxtpx:hr></gpxtpx:TrackPointExtension></extensions>
+      </trkpt>
+      <trkpt lat="10.804950" lon="106.728550">
+        <ele>8.0</ele><time>2024-02-01T21:34:50Z</time>
+        <extensions><gpxtpx:TrackPointExtension><gpxtpx:hr>117</gpxtpx:hr></gpxtpx:TrackPointExtension></extensions>
+      </trkpt>
+      <trkpt lat="10.804850" lon="106.728250">
+        <ele>8.1</ele><time>2024-02-01T21:35:10Z</time>
+        <extensions><gpxtpx:TrackPointExtension><gpxtpx:hr>119</gpxtpx:hr></gpxtpx:TrackPointExtension></extensions>
+      </trkpt>
+      <trkpt lat="10.804900" lon="106.728000">
+        <ele>8.0</ele><time>2024-02-01T21:35:30Z</time>
+        <extensions><gpxtpx:TrackPointExtension><gpxtpx:hr>116</gpxtpx:hr></gpxtpx:TrackPointExtension></extensions>
+      </trkpt>
+      <trkpt lat="10.805000" lon="106.728000">
+        <ele>8.1</ele><time>2024-02-01T21:35:50Z</time>
+        <extensions><gpxtpx:TrackPointExtension><gpxtpx:hr>112</gpxtpx:hr></gpxtpx:TrackPointExtension></extensions>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>
