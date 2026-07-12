@@ -40,6 +40,12 @@ Clustering thresholds live as module constants at the top of `clusterer.py`
 Remember clustering intentionally favors over-merging; splitting an over-merged cluster in
 JOSM is far cheaper than mapping 15 near-duplicate un-merged traces.
 
+**Known limitation:** `SEGMENT_CHUNK_LENGTH_M` cuts are by cumulative distance from each
+trace's own start, not aligned to physical streets, so two runs can chunk the same real path
+at different offsets — one run's chunk boundary lands mid-path while another's doesn't. That
+path may then show up as two adjacent, weakly-clustered bundles instead of one. If you see
+this, either merge them in JOSM or lower `OVERLAP_FRACTION_THRESHOLD` in `clusterer.py`.
+
 ## A path I know is missing from OSM didn't get a JOSM bundle
 
 Check `output/clusters_raw.geojson` for `osm_coverage_fraction` on that cluster. If it's above

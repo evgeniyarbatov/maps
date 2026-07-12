@@ -48,6 +48,11 @@ class Settings(BaseSettings):
     output_dir: Path = Field(default=Path("./output"))
 
     min_segment_length_m: float = 25.0
+    # Long runs (up to ~30km) cover many streets; only a fraction of any one run is
+    # ever the same physical path as another. Chunking to street-sized pieces before
+    # clustering/coverage checks lets a genuinely missing 500m alley get flagged even
+    # when it sits inside an otherwise well-covered 20km recording.
+    segment_chunk_length_m: float = 750.0
     simplify_tolerance_m: float = 4.0
     cluster_buffer_m: float = 50.0
     poi_search_radius_m: float = 50.0

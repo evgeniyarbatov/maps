@@ -60,7 +60,7 @@ Python resolution: `Settings.resolve_osm_pbf()` prefers `OSM_PBF_PATH`, then cit
 
 ### 1. Models (`models.py`)
 Pydantic v2 models:
-- `GPXSegment`: one continuous `<trkseg>` after cleaning
+- `GPXSegment`: one ~`SEGMENT_CHUNK_LENGTH_M` chunk of a cleaned `<trkseg>`
 - `Cluster`: group of segments for one physical path; includes `num_gpx_traces`, `avg_length_m`, `osm_coverage_fraction`
 - `POI`: landmark from OSM used for naming
 - `Settings`: all tunable parameters + paths
@@ -68,6 +68,12 @@ Pydantic v2 models:
 ### 2. GPX Processing
 - Turn messy real-world GPX into clean LineStrings in EPSG:4326.
 - Project to local UTM only when meter-accurate buffering/length is needed.
+- **Chunk long traces.** A run can be 30km and cross dozens of streets; clustering and the
+  missing-path filter both need street-sized geometry, not whole-run geometry, or a single
+  missing 500m alley gets averaged away inside an otherwise 95%-covered 20km recording. After
+  cleaning, each `<trkseg>` is cut into ~`SEGMENT_CHUNK_LENGTH_M` (default 750m) pieces —
+  cut by cumulative distance, not by OSM way boundaries, so consecutive chunks share their
+  boundary point and there's no gap between them. Each chunk becomes its own `GPXSegment`.
 
 ### 3. Clustering Strategy
 Hybrid spatial index + overlap graph (or HDBSCAN on midpoints + refine):

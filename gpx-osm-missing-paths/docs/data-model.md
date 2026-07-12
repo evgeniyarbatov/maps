@@ -6,14 +6,18 @@ so shapely geometries can live directly on the model. Geometry fields serialize 
 
 ## `GPXSegment`
 
-One continuous, cleaned `<trkseg>` from a raw GPX file.
+One ~`SEGMENT_CHUNK_LENGTH_M` (default 750m) chunk of a cleaned `<trkseg>`. A raw `<trkseg>`
+can span a 30km run; `gpx_processor` cuts it by cumulative distance into street-sized chunks
+before this model is constructed, so clustering and OSM-coverage checks operate at the
+granularity a single missing path actually needs (see `docs/architecture.md`).
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `segment_id` | `str` | `"{original_file}#t{track_index}s{segment_index}"` |
+| `segment_id` | `str` | `"{original_file}#t{track_index}s{segment_index}c{chunk_index}"` |
 | `source_file` | `Path` | Absolute path, used to copy the raw GPX into a bundle |
 | `original_file` | `str` | Path relative to `GPX_DIR`, used as the display/source label |
-| `track_index` / `segment_index` | `int` | Position within the source file |
+| `track_index` / `segment_index` | `int` | Position of the source `<trkseg>` within the file |
+| `chunk_index` | `int` | Position of this chunk within that `<trkseg>` |
 | `geometry` | `LineString` | Cleaned, simplified, EPSG:4326 |
 | `length_m` | `float` | Haversine length after cleaning |
 | `num_points` | `int` | After dedup, before simplification |

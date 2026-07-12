@@ -70,6 +70,29 @@ def _dedupe_points(
     return kept
 
 
+def _split_points_by_distance(
+    points: list[tuple[float, float, datetime | None]], chunk_length_m: float
+) -> list[list[tuple[float, float, datetime | None]]]:
+    """Cut a long cleaned trace into ~``chunk_length_m`` pieces (street-sized, not run-sized).
+
+    Consecutive chunks share their boundary point so there's no gap between them.
+    """
+    if len(points) < 2:
+        return [points] if points else []
+
+    chunks: list[list[tuple[float, float, datetime | None]]] = [[points[0]]]
+    accumulated = 0.0
+    for prev, curr in zip(points, points[1:], strict=False):
+        accumulated += haversine_m(prev[0], prev[1], curr[0], curr[1])
+        chunks[-1].append(curr)
+        if accumulated >= chunk_length_m:
+            chunks.append([curr])
+            accumulated = 0.0
+    if len(chunks[-1]) < 2:
+        chunks.pop()
+    return chunks
+
+
 def _simplify_line(line: LineString, tolerance_m: float) -> LineString:
     """Douglas-Peucker simplify in meter-accurate local UTM, returned in EPSG:4326."""
     lon0, lat0 = line.coords[0][0], line.coords[0][1]
@@ -83,20 +106,19 @@ def _simplify_line(line: LineString, tolerance_m: float) -> LineString:
     return LineString(wgs84_coords)
 
 
-def _segment_from_points(
-    points: list[tuple[float, float, datetime | None]],
+def _segment_from_chunk(
+    chunk: list[tuple[float, float, datetime | None]],
     source_file: Path,
     original_file: str,
     track_index: int,
     segment_index: int,
+    chunk_index: int,
     settings: Settings,
 ) -> GPXSegment | None:
-    valid = [(lon, lat, ts) for lon, lat, ts in points if _in_bbox(lon, lat, VIETNAM_BBOX)]
-    deduped = _dedupe_points(valid)
-    if len(deduped) < 2:
+    if len(chunk) < 2:
         return None
 
-    raw_line = LineString([(lon, lat) for lon, lat, _ in deduped])
+    raw_line = LineString([(lon, lat) for lon, lat, _ in chunk])
     line = _simplify_line(raw_line, settings.simplify_tolerance_m)
     if len(line.coords) < 2:
         return None
@@ -105,23 +127,49 @@ def _segment_from_points(
     if length_m < settings.min_segment_length_m:
         return None
 
-    start_time = next((ts for _, _, ts in deduped if ts is not None), None)
-    end_time = next((ts for _, _, ts in reversed(deduped) if ts is not None), None)
+    start_time = next((ts for _, _, ts in chunk if ts is not None), None)
+    end_time = next((ts for _, _, ts in reversed(chunk) if ts is not None), None)
 
-    segment_id = f"{original_file}#t{track_index}s{segment_index}"
+    segment_id = f"{original_file}#t{track_index}s{segment_index}c{chunk_index}"
     return GPXSegment(
         segment_id=segment_id,
         source_file=source_file,
         original_file=original_file,
         track_index=track_index,
         segment_index=segment_index,
+        chunk_index=chunk_index,
         geometry=line,
         length_m=length_m,
-        num_points=len(deduped),
+        num_points=len(chunk),
         start_time=start_time,
         end_time=end_time,
         bbox=geometry_bbox(line),
     )
+
+
+def _segments_from_points(
+    points: list[tuple[float, float, datetime | None]],
+    source_file: Path,
+    original_file: str,
+    track_index: int,
+    segment_index: int,
+    settings: Settings,
+) -> list[GPXSegment]:
+    """Clean one ``<trkseg>``'s points and cut the result into street-sized chunks."""
+    valid = [(lon, lat, ts) for lon, lat, ts in points if _in_bbox(lon, lat, VIETNAM_BBOX)]
+    deduped = _dedupe_points(valid)
+    if len(deduped) < 2:
+        return []
+
+    chunks = _split_points_by_distance(deduped, settings.segment_chunk_length_m)
+    segments = []
+    for chunk_index, chunk in enumerate(chunks):
+        segment = _segment_from_chunk(
+            chunk, source_file, original_file, track_index, segment_index, chunk_index, settings
+        )
+        if segment is not None:
+            segments.append(segment)
+    return segments
 
 
 def parse_gpx_file(
@@ -129,9 +177,10 @@ def parse_gpx_file(
 ) -> tuple[list[GPXSegment], int, int]:
     """Parse one GPX file into cleaned segments.
 
-    Returns ``(segments, dropped_short, dropped_empty)``. Any single track
-    segment that fails to parse or clean is skipped rather than failing the
-    whole file (a tired runner's collection always has a few bad recordings).
+    Returns ``(segments, dropped_short, dropped_empty)``, counted per raw
+    ``<trkseg>`` (not per chunk). Any single track segment that fails to parse
+    or clean is skipped rather than failing the whole file (a tired runner's
+    collection always has a few bad recordings).
     """
     original_file = str(path.relative_to(gpx_dir)) if path.is_relative_to(gpx_dir) else path.name
     gpx = gpxpy.parse(_read_text(path))
@@ -149,13 +198,13 @@ def parse_gpx_file(
             if not points:
                 dropped_empty += 1
                 continue
-            segment = _segment_from_points(
+            chunk_segments = _segments_from_points(
                 points, path, original_file, track_index, segment_index, settings
             )
-            if segment is None:
+            if not chunk_segments:
                 dropped_short += 1
                 continue
-            segments.append(segment)
+            segments.extend(chunk_segments)
 
     return segments, dropped_short, dropped_empty
 
@@ -169,6 +218,7 @@ def segments_to_geodataframe(segments: list[GPXSegment]) -> gpd.GeoDataFrame:
             "original_file": s.original_file,
             "track_index": s.track_index,
             "segment_index": s.segment_index,
+            "chunk_index": s.chunk_index,
             "length_m": s.length_m,
             "num_points": s.num_points,
             "start_time": s.start_time,
@@ -222,6 +272,7 @@ def load_segments(output_dir: Path) -> list[GPXSegment]:
                 original_file=row.original_file,
                 track_index=row.track_index,
                 segment_index=row.segment_index,
+                chunk_index=row.chunk_index,
                 geometry=row.geometry,
                 length_m=row.length_m,
                 num_points=row.num_points,

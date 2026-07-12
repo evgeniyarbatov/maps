@@ -44,7 +44,8 @@ Copy `env.example` to `.env` and adjust. All are optional; defaults target HCMC.
 
 | Variable | Default | Meaning |
 |----------|---------|---------|
-| `MIN_SEGMENT_LENGTH_M` | 25 | Drop cleaned segments shorter than this |
+| `MIN_SEGMENT_LENGTH_M` | 25 | Drop cleaned chunks shorter than this |
+| `SEGMENT_CHUNK_LENGTH_M` | 750 | Cut each cleaned trace into ~this many meters before clustering/coverage checks, so a run up to ~30km doesn't get treated as one giant geometry |
 | `SIMPLIFY_TOLERANCE_M` | 4.0 | Douglas-Peucker tolerance (meters, in local UTM) |
 | `CLUSTER_BUFFER_M` | 50 | Buffer around a cluster's representative line for the `.osm` extract |
 | `POI_SEARCH_RADIUS_M` | 50 | How far to look for naming landmarks |

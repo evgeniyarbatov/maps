@@ -33,7 +33,13 @@ class POI(BaseModel):
 
 
 class GPXSegment(BaseModel):
-    """One continuous, cleaned ``<trkseg>`` from a raw GPX file."""
+    """One cleaned, fixed-length chunk of a ``<trkseg>``.
+
+    A raw ``<trkseg>`` can be a 30km run spanning dozens of streets; matching
+    and OSM-coverage checks need street-sized pieces, not the whole run, so
+    ``gpx_processor`` splits each cleaned trace into ~``SEGMENT_CHUNK_LENGTH_M``
+    chunks before this model is ever constructed.
+    """
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -42,6 +48,7 @@ class GPXSegment(BaseModel):
     original_file: str
     track_index: int
     segment_index: int
+    chunk_index: int
     geometry: LineString
     length_m: float
     num_points: int
