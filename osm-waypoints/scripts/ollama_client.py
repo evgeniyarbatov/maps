@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 
 import requests
-
 from config import OLLAMA_MODEL, OLLAMA_URL
 
 

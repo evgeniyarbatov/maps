@@ -12,9 +12,7 @@ BUFFER_KM = float(os.environ.get("BUFFER_KM", "0.25"))
 OSM_DIR = REPO_ROOT / "osm"
 DATA_DIR = REPO_ROOT / "data"
 
-OSM_URL = os.environ.get(
-    "OSM_URL", "https://download.geofabrik.de/asia/vietnam-latest.osm.pbf"
-)
+OSM_URL = os.environ.get("OSM_URL", "https://download.geofabrik.de/asia/vietnam-latest.osm.pbf")
 COUNTRY_OSM_FILE = OSM_DIR / Path(OSM_URL).name
 
 OSM_EXTRACT = OSM_DIR / "extract.osm"

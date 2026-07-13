@@ -44,9 +44,9 @@ def build_gpx(waypoints: list[dict]) -> ET.Element:
 
     metadata = ET.SubElement(gpx, "metadata")
     ET.SubElement(metadata, "name").text = "OSM hiking waypoints"
-    ET.SubElement(metadata, "desc").text = (
-        "Points of interest extracted from OpenStreetMap for hiking"
-    )
+    ET.SubElement(
+        metadata, "desc"
+    ).text = "Points of interest extracted from OpenStreetMap for hiking"
 
     for waypoint in waypoints:
         tags = waypoint.get("tags", {})

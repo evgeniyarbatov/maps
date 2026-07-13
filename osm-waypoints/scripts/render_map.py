@@ -9,9 +9,8 @@ import sys
 import contextily as cx
 import geopandas as gpd
 import matplotlib.pyplot as plt
-from shapely.geometry import Point
-
 from config import DATA_DIR, MAP_DPI, MAP_IMAGE, MAP_WIDTH_IN, POIS_RAW, POIS_VALIDATED
+from shapely.geometry import Point
 
 
 def load_waypoints() -> list[dict]:

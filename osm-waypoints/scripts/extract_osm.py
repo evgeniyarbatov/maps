@@ -8,8 +8,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-from shapely.geometry import mapping
-
 from config import (
     BUFFER_KM,
     COUNTRY_OSM_FILE,
@@ -18,6 +16,7 @@ from config import (
     OSM_POLYGON,
 )
 from gpx_utils import compute_convex_polygon_with_buffer, load_track_points
+from shapely.geometry import mapping
 
 
 def write_polygon_geojson(polygon, output_path: Path) -> None:

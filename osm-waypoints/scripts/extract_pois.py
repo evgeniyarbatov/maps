@@ -30,7 +30,9 @@ def node_tags(node: ET.Element) -> dict[str, str]:
     return {tag.get("k", ""): tag.get("v", "") for tag in node.findall("tag")}
 
 
-def way_centroid(way: ET.Element, nodes: dict[str, tuple[float, float]]) -> tuple[float, float] | None:
+def way_centroid(
+    way: ET.Element, nodes: dict[str, tuple[float, float]]
+) -> tuple[float, float] | None:
     coords: list[tuple[float, float]] = []
     for nd in way.findall("nd"):
         ref = nd.get("ref")
@@ -116,7 +118,9 @@ def extract_pois(osm_path: Path) -> list[dict]:
 
 def main() -> int:
     if not OSM_EXTRACT.is_file():
-        print(f"OSM extract not found: {OSM_EXTRACT}\nRun `make extract-osm` first.", file=sys.stderr)
+        print(
+            f"OSM extract not found: {OSM_EXTRACT}\nRun `make extract-osm` first.", file=sys.stderr
+        )
         return 1
 
     pois = extract_pois(OSM_EXTRACT)
