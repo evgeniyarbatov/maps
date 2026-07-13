@@ -112,9 +112,7 @@ def _midpoint_candidates(
 ) -> dict[str, set[str]]:
     """For each segment id, other ids whose midpoints fall within ``midpoint_max_m``."""
     ids = list(projected.keys())
-    midpoints = {
-        sid: projected[sid].interpolate(0.5, normalized=True) for sid in ids
-    }
+    midpoints = {sid: projected[sid].interpolate(0.5, normalized=True) for sid in ids}
     gdf = gpd.GeoDataFrame(
         {"segment_id": ids},
         geometry=[midpoints[sid].buffer(midpoint_max_m) for sid in ids],
@@ -187,9 +185,7 @@ def cluster_segments(
     return segment_to_cluster, summary
 
 
-def build_clusters(
-    segments: list[GPXSegment], segment_to_cluster: dict[str, str]
-) -> list[Cluster]:
+def build_clusters(segments: list[GPXSegment], segment_to_cluster: dict[str, str]) -> list[Cluster]:
     """Aggregate segments per ``cluster_id`` into ``Cluster`` objects."""
     by_cluster: dict[str, list[GPXSegment]] = {}
     for segment in segments:

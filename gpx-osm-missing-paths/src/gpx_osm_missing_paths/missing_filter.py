@@ -100,16 +100,16 @@ def _project_paths(paths: gpd.GeoDataFrame, epsg: int) -> gpd.GeoDataFrame:
     return paths.to_crs(epsg=epsg)
 
 
-def _coverage_fraction(
-    line_utm: LineString, paths_utm: gpd.GeoDataFrame, buffer_m: float
-) -> float:
+def _coverage_fraction(line_utm: LineString, paths_utm: gpd.GeoDataFrame, buffer_m: float) -> float:
     if line_utm.length == 0:
         return 0.0
     if paths_utm.empty:
         return 0.0
     minx, miny, maxx, maxy = line_utm.bounds
     nearby_idx = list(
-        paths_utm.sindex.intersection((minx - buffer_m, miny - buffer_m, maxx + buffer_m, maxy + buffer_m))
+        paths_utm.sindex.intersection(
+            (minx - buffer_m, miny - buffer_m, maxx + buffer_m, maxy + buffer_m)
+        )
     )
     if not nearby_idx:
         return 0.0

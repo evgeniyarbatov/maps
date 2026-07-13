@@ -133,7 +133,11 @@ def _load_cached(
 def load_pois(pbf_path: Path, output_dir: Path) -> gpd.GeoDataFrame:
     """Named amenity/shop/tourism/leisure/craft/office features, cached until the PBF changes."""
     return _load_cached(
-        pbf_path, output_dir, POI_CACHE_NAME, _POIHandler, ["osm_id", "osm_type", "name", "category"]
+        pbf_path,
+        output_dir,
+        POI_CACHE_NAME,
+        _POIHandler,
+        ["osm_id", "osm_type", "name", "category"],
     )
 
 
@@ -158,9 +162,7 @@ def rank_pois_for_cluster(
     lon0, lat0 = cluster.representative_line.coords[len(cluster.representative_line.coords) // 2]
     epsg = utm_epsg_for(lon0, lat0)
     to_utm = Transformer.from_crs("EPSG:4326", f"EPSG:{epsg}", always_xy=True)
-    line_utm = LineString(
-        [to_utm.transform(x, y) for x, y in cluster.representative_line.coords]
-    )
+    line_utm = LineString([to_utm.transform(x, y) for x, y in cluster.representative_line.coords])
     radius = settings.poi_search_radius_m
 
     candidates: list[POI] = []
@@ -218,7 +220,9 @@ def rank_pois_for_cluster(
             distance = row.geometry.distance(line_utm)
             if distance <= best_distance:
                 best_distance = distance
-                nearest_point_utm = row.geometry.interpolate(row.geometry.project(line_utm.centroid))
+                nearest_point_utm = row.geometry.interpolate(
+                    row.geometry.project(line_utm.centroid)
+                )
                 to_wgs84 = Transformer.from_crs(f"EPSG:{epsg}", "EPSG:4326", always_xy=True)
                 nearest_lon, nearest_lat = to_wgs84.transform(
                     nearest_point_utm.x, nearest_point_utm.y
@@ -268,9 +272,7 @@ class NameSummary:
     clusters_without_poi: int = 0
 
 
-def name_clusters(
-    settings: Settings, clusters: list[Cluster]
-) -> tuple[list[Cluster], NameSummary]:
+def name_clusters(settings: Settings, clusters: list[Cluster]) -> tuple[list[Cluster], NameSummary]:
     """Generate ``human_name`` / ``slug`` / ``nearby_pois`` for missing clusters only."""
     summary = NameSummary()
     missing = [c for c in clusters if c.is_missing]
@@ -288,7 +290,11 @@ def name_clusters(
         c.human_name = generate_human_name(c, ranked, nearest_street)
         base_slug = slugify(c.human_name)
         slug_counts[base_slug] = slug_counts.get(base_slug, 0) + 1
-        c.slug = base_slug if slug_counts[base_slug] == 1 else f"{base_slug}_{slug_counts[base_slug]:02d}"
+        c.slug = (
+            base_slug
+            if slug_counts[base_slug] == 1
+            else f"{base_slug}_{slug_counts[base_slug]:02d}"
+        )
         c.description = (
             f"{c.num_gpx_traces} GPX traces, avg {c.avg_length_m:.0f}m, "
             f"OSM coverage {(c.osm_coverage_fraction or 0.0):.0%}"

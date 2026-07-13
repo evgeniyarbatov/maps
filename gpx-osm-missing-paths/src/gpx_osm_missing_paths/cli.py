@@ -141,7 +141,9 @@ def name() -> None:
     settings = get_settings()
     state_path = settings.output_dir / CLUSTERS_STATE_NAME
     if not state_path.is_file():
-        console.print("[yellow]No clusters_state.json — run `gpx-osm filter-missing` first.[/yellow]")
+        console.print(
+            "[yellow]No clusters_state.json — run `gpx-osm filter-missing` first.[/yellow]"
+        )
         raise typer.Exit(code=1)
 
     pbf = settings.resolve_osm_pbf()
