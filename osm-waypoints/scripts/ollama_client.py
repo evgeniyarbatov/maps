@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from typing import Any
 
 import requests
 from config import OLLAMA_MODEL, OLLAMA_URL
@@ -27,7 +28,7 @@ def generate_json(
     prompt: str,
     model: str = OLLAMA_MODEL,
     temperature: float = 0.1,
-) -> dict:
+) -> dict[str, Any]:
     response = requests.post(
         f"{OLLAMA_URL}/api/generate",
         json={
@@ -43,6 +44,7 @@ def generate_json(
 
     raw = response.json().get("response", "{}")
     try:
-        return json.loads(raw)
+        result: dict[str, Any] = json.loads(raw)
+        return result
     except json.JSONDecodeError:
         return {"error": f"Unparseable model response: {raw[:200]}"}

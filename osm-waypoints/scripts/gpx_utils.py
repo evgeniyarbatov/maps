@@ -25,8 +25,8 @@ def load_track_points(gpx_dir: Path) -> list[tuple[float, float]]:
                     points.append((point.longitude, point.latitude))
 
         for route in gpx.routes:
-            for point in route.points:
-                points.append((point.longitude, point.latitude))
+            for route_point in route.points:
+                points.append((route_point.longitude, route_point.latitude))
 
         for waypoint in gpx.waypoints:
             points.append((waypoint.longitude, waypoint.latitude))

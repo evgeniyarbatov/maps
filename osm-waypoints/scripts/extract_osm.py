@@ -16,10 +16,10 @@ from config import (
     OSM_POLYGON,
 )
 from gpx_utils import compute_convex_polygon_with_buffer, load_track_points
-from shapely.geometry import mapping
+from shapely.geometry import Polygon, mapping
 
 
-def write_polygon_geojson(polygon, output_path: Path) -> None:
+def write_polygon_geojson(polygon: Polygon, output_path: Path) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     feature = {
         "type": "Feature",

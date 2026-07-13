@@ -28,6 +28,13 @@ target-version = "py311"
 select = ["E", "F", "W", "I", "B", "C4", "UP", "SIM", "RET", "S"]
 ignore = ["E501", "B008", "S101"]
 
+[tool.ruff.lint.per-file-ignores]
+# osmium is a fixed, locally-installed pipeline dependency, not attacker-controlled input.
+"scripts/extract_osm.py" = ["S603", "S607"]
+# Parses OSM extracts produced locally by osmium, not network-facing untrusted XML.
+"scripts/extract_pois.py" = ["S314"]
+"scripts/export_gpx.py" = ["S318"]
+
 
 [tool.ruff.format]
 quote-style = "double"
@@ -38,3 +45,15 @@ python_version = "3.11"
 strict = true
 warn_return_any = true
 warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+module = "contextily.*"
+ignore_missing_imports = true
+
+[dependency-groups]
+dev = [
+    "mypy>=2.3.0",
+    "ruff>=0.15.21",
+    "types-geopandas>=1.1.4.20260628",
+    "types-shapely>=2.1.0.20260630",
+]

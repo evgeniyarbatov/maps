@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import sys
 import time
+from typing import Any
 
 from config import OLLAMA_MODEL, POIS_RAW, POIS_VALIDATED
 from ollama_client import ensure_model, generate_json
@@ -39,7 +40,7 @@ or
 """
 
 
-def classify_poi(poi: dict, model: str) -> dict:
+def classify_poi(poi: dict[str, Any], model: str) -> dict[str, Any]:
     prompt = PROMPT_TEMPLATE.format(
         name=poi["name"],
         category=poi["category"],
@@ -71,7 +72,7 @@ def main() -> int:
         print(f"Cannot reach Ollama: {exc}", file=sys.stderr)
         return 1
 
-    validated: list[dict] = []
+    validated: list[dict[str, Any]] = []
     kept = 0
 
     for index, poi in enumerate(pois, start=1):

@@ -7,6 +7,7 @@ import json
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from typing import Any
 
 from config import DATA_DIR, OSM_EXTRACT, POIS_RAW
 from osm_context import parse_elevation
@@ -49,10 +50,10 @@ def tags_from_element(element: ET.Element) -> dict[str, str]:
     return {tag.get("k", ""): tag.get("v", "") for tag in element.findall("tag")}
 
 
-def extract_pois(osm_path: Path) -> list[dict]:
+def extract_pois(osm_path: Path) -> list[dict[str, Any]]:
     root = ET.parse(osm_path).getroot()
     nodes = parse_nodes(root)
-    pois: list[dict] = []
+    pois: list[dict[str, Any]] = []
     seen: set[str] = set()
 
     for node in root.findall("node"):
@@ -69,7 +70,8 @@ def extract_pois(osm_path: Path) -> list[dict]:
 
         lat = float(node.get("lat", "0"))
         lon = float(node.get("lon", "0"))
-        node_ele = float(node.get("ele")) if node.get("ele") else None
+        ele_raw = node.get("ele")
+        node_ele = float(ele_raw) if ele_raw else None
 
         pois.append(
             {

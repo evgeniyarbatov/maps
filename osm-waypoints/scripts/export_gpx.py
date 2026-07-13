@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import sys
 import xml.etree.ElementTree as ET
+from typing import Any
 from xml.dom import minidom
 
 from config import DATA_DIR, POIS_RAW, POIS_VALIDATED, WAYPOINTS_GPX
@@ -16,7 +17,7 @@ GPX_NS = "http://www.topografix.com/GPX/1/1"
 ET.register_namespace("", GPX_NS)
 
 
-def load_waypoints() -> list[dict]:
+def load_waypoints() -> list[dict[str, Any]]:
     source = POIS_VALIDATED if POIS_VALIDATED.is_file() else POIS_RAW
     if not source.is_file():
         raise FileNotFoundError(
@@ -24,7 +25,7 @@ def load_waypoints() -> list[dict]:
         )
 
     payload = json.loads(source.read_text())
-    waypoints = payload.get("waypoints", [])
+    waypoints: list[dict[str, Any]] = payload.get("waypoints", [])
 
     if source == POIS_VALIDATED:
         return [w for w in waypoints if w.get("valid", True)]
@@ -32,7 +33,7 @@ def load_waypoints() -> list[dict]:
     return waypoints
 
 
-def build_gpx(waypoints: list[dict]) -> ET.Element:
+def build_gpx(waypoints: list[dict[str, Any]]) -> ET.Element:
     gpx = ET.Element(
         "gpx",
         {

@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import sys
 import time
+from typing import Any
 
 from config import OLLAMA_MODEL, POIS_VALIDATED
 from ollama_client import ensure_model, generate_json
@@ -35,7 +36,7 @@ Reply with JSON only:
 """
 
 
-def describe_poi(poi: dict, model: str) -> str:
+def describe_poi(poi: dict[str, Any], model: str) -> str:
     context = build_description_context(poi)
     prompt = PROMPT_TEMPLATE.format(context=json.dumps(context, ensure_ascii=False, indent=2))
     result = generate_json(prompt, model=model, temperature=0.2)
@@ -65,7 +66,7 @@ def main() -> int:
         return 1
 
     described = 0
-    for index, poi in enumerate(waypoints, start=1):
+    for poi in waypoints:
         if not poi.get("valid"):
             continue
 

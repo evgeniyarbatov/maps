@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import sys
+from typing import Any
 
 import contextily as cx
 import geopandas as gpd
@@ -13,7 +14,7 @@ from config import DATA_DIR, MAP_DPI, MAP_IMAGE, MAP_WIDTH_IN, POIS_RAW, POIS_VA
 from shapely.geometry import Point
 
 
-def load_waypoints() -> list[dict]:
+def load_waypoints() -> list[dict[str, Any]]:
     source = POIS_VALIDATED if POIS_VALIDATED.is_file() else POIS_RAW
     if not source.is_file():
         raise FileNotFoundError(
@@ -21,7 +22,7 @@ def load_waypoints() -> list[dict]:
         )
 
     payload = json.loads(source.read_text())
-    waypoints = payload.get("waypoints", [])
+    waypoints: list[dict[str, Any]] = payload.get("waypoints", [])
 
     if source == POIS_VALIDATED:
         return [w for w in waypoints if w.get("valid", True)]

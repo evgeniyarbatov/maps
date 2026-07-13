@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 # Explicit tags commonly useful for short visitor-facing descriptions.
 DIRECT_TAGS = (
     "name:en",
@@ -79,7 +81,7 @@ def parse_elevation(tags: dict[str, str], node_ele: float | None = None) -> floa
     return node_ele
 
 
-def build_description_context(poi: dict) -> dict[str, str | float]:
+def build_description_context(poi: dict[str, Any]) -> dict[str, str | float]:
     """Return a compact, description-focused view of OSM data for one POI."""
     tags = poi.get("tags", {})
     context: dict[str, str | float] = {
