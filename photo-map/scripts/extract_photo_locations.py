@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+from typing import Any
 
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".tif", ".tiff"}
 GPS_TAG_ID = 34853
@@ -35,13 +36,16 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def to_float(value) -> float:
+DmsComponent = int | float | tuple[int, int]
+
+
+def to_float(value: DmsComponent) -> float:
     if isinstance(value, tuple):
         return float(value[0]) / float(value[1])
     return float(value)
 
 
-def dms_to_decimal(values, ref: str) -> float:
+def dms_to_decimal(values: tuple[DmsComponent, DmsComponent, DmsComponent], ref: str) -> float:
     degrees = to_float(values[0])
     minutes = to_float(values[1])
     seconds = to_float(values[2])
@@ -51,7 +55,7 @@ def dms_to_decimal(values, ref: str) -> float:
     return decimal
 
 
-def extract_gps(exif: dict) -> tuple[float, float] | None:
+def extract_gps(exif: dict[int, Any]) -> tuple[float, float] | None:
     gps_info = exif.get(GPS_TAG_ID)
     if not gps_info:
         return None
@@ -70,12 +74,12 @@ def build_photo_entry(
     thumbs_dir: Path,
     originals_dir: Path,
     public_dir: Path,
-):
-    from PIL import Image
+) -> dict[str, str | float] | None:
+    from PIL import ExifTags, Image
 
     with Image.open(path) as image:
-        exif = image._getexif() or {}
-        gps = extract_gps(exif)
+        gps_ifd = image.getexif().get_ifd(ExifTags.IFD.GPSInfo)
+        gps = extract_gps({GPS_TAG_ID: gps_ifd} if gps_ifd else {})
         if gps is None:
             return None
 
