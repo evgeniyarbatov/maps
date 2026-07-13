@@ -32,4 +32,3 @@ clean:
 	site/public/thumbs \
 	site/public/photos \
 	site/public/photos.json
-

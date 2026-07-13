@@ -131,9 +131,7 @@ def main() -> None:
     args = parse_args()
     input_dir = Path(args.input)
 
-    extract_photos(
-        input_dir, Path(args.output), Path(args.thumbs_dir), Path(args.originals_dir)
-    )
+    extract_photos(input_dir, Path(args.output), Path(args.thumbs_dir), Path(args.originals_dir))
 
 
 if __name__ == "__main__":
