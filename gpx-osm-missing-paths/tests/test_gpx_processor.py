@@ -1,12 +1,14 @@
 """Long traces must be cut into street-sized chunks before clustering/coverage checks."""
 
+from datetime import datetime
+
 from gpx_osm_missing_paths.gpx_processor import _split_points_by_distance
 from gpx_osm_missing_paths.utils import haversine_m
 
 LON_PER_100M = 0.0009  # roughly 100m eastward at the equator
 
 
-def _points(n: int) -> list[tuple[float, float, None]]:
+def _points(n: int) -> list[tuple[float, float, datetime | None]]:
     return [(LON_PER_100M * i, 0.0, None) for i in range(n)]
 
 
@@ -40,5 +42,5 @@ def test_consecutive_chunks_share_boundary_point() -> None:
 
 def test_empty_and_single_point_inputs() -> None:
     assert _split_points_by_distance([], chunk_length_m=750.0) == []
-    single = [(0.0, 0.0, None)]
+    single: list[tuple[float, float, datetime | None]] = [(0.0, 0.0, None)]
     assert _split_points_by_distance(single, chunk_length_m=750.0) == [single]
