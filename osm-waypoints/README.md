@@ -11,13 +11,19 @@ Built for planning on-foot outings — forest paths, village strolls, scenic wal
 
 ## Installation
 
-Install system and Python dependencies:
+Install Python dependencies:
 
 ```bash
 make install
 ```
 
-This runs `brew bundle` from the `Brewfile` (osmium-tool, ollama), creates a venv at `.venv`, and installs packages from `requirements.txt`.
+System dependencies (osmium-tool, ollama, via Homebrew) are installed separately:
+
+```bash
+make brew-deps
+```
+
+`extract-osm` depends on `brew-deps` automatically since it shells out to `osmium`.
 
 The default Ollama model (`mistral-nemo`) is pulled automatically on the first `validate-pois` or `describe-pois` run.
 
@@ -46,7 +52,8 @@ Each step is a separate Makefile target.
 ### Run step by step
 
 ```bash
-make install          # brew deps + Python venv
+make install           # Python venv
+make brew-deps         # osmium-tool, ollama
 make country          # download vietnam-latest.osm.pbf (~310 MB, once)
 make extract-osm
 make extract-pois

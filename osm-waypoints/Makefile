@@ -30,15 +30,17 @@ SCRIPTS_DIR = scripts
 
 export GPX_DIR BUFFER_KM OLLAMA_MODEL OLLAMA_URL MAP_DPI
 
-.PHONY: install lock test country extract-osm extract-pois validate-pois describe-pois render-map export-gpx all clean help
+.PHONY: install brew-deps lock test country extract-osm extract-pois validate-pois describe-pois render-map export-gpx all clean help
 
 install:
+	@uv sync
+
+brew-deps:
 	@command -v brew >/dev/null 2>&1 || { \
 		echo "Homebrew is required. Install from https://brew.sh"; \
 		exit 1; \
 	}
 	@brew bundle check --file=Brewfile >/dev/null 2>&1 || brew bundle --file=Brewfile
-	@uv sync
 
 lock:
 	@uv lock
@@ -46,7 +48,7 @@ lock:
 test: install
 	@PYTHONPATH=$(SCRIPTS_DIR) uv run python -m unittest discover -s tests -p 'test_*.py' -v
 
-extract-osm: install country
+extract-osm: install brew-deps country
 	@cd $(SCRIPTS_DIR) && PYTHONUNBUFFERED=1 uv run python extract_osm.py
 
 extract-pois: install extract-osm
@@ -68,7 +70,8 @@ clean:
 	@rm -rf .venv
 
 help:
-	@echo "install       - brew deps + uv sync"
+	@echo "install       - uv sync"
+	@echo "brew-deps     - install/check Homebrew deps (osmium-tool, ollama)"
 	@echo "lock          - refresh uv.lock"
 	@echo "test          - run unit tests"
 	@echo "country       - download/link country OSM extract"
