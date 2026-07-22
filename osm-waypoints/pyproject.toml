@@ -34,6 +34,7 @@ ignore = ["E501", "B008", "S101"]
 # Parses OSM extracts produced locally by osmium, not network-facing untrusted XML.
 "scripts/extract_pois.py" = ["S314"]
 "scripts/export_gpx.py" = ["S318"]
+"tests/test_extract_pois.py" = ["S314"]
 
 
 [tool.ruff.format]
@@ -45,6 +46,9 @@ python_version = "3.11"
 strict = true
 warn_return_any = true
 warn_unused_ignores = true
+# tests/ imports scripts as a package while scripts/*.py cross-import each other as bare
+# top-level modules; mypy can't resolve both naming schemes for the same files at once.
+exclude = ["^tests/"]
 
 [[tool.mypy.overrides]]
 module = "contextily.*"

@@ -30,7 +30,7 @@ SCRIPTS_DIR = scripts
 
 export GPX_DIR BUFFER_KM OLLAMA_MODEL OLLAMA_URL MAP_DPI
 
-.PHONY: install lock country extract-osm extract-pois validate-pois describe-pois render-map export-gpx all clean help
+.PHONY: install lock test country extract-osm extract-pois validate-pois describe-pois render-map export-gpx all clean help
 
 install:
 	@command -v brew >/dev/null 2>&1 || { \
@@ -42,6 +42,9 @@ install:
 
 lock:
 	@uv lock
+
+test: install
+	@PYTHONPATH=$(SCRIPTS_DIR) uv run python -m unittest discover -s tests -p 'test_*.py' -v
 
 extract-osm: install country
 	@cd $(SCRIPTS_DIR) && PYTHONUNBUFFERED=1 uv run python extract_osm.py
@@ -67,6 +70,7 @@ clean:
 help:
 	@echo "install       - brew deps + uv sync"
 	@echo "lock          - refresh uv.lock"
+	@echo "test          - run unit tests"
 	@echo "country       - download/link country OSM extract"
 	@echo "extract-osm   - build buffered polygon and cut country PBF"
 	@echo "extract-pois  - parse OSM extract into data/pois.json"
