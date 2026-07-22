@@ -10,6 +10,7 @@ default: run
 
 install:
 	@uv sync
+	@cd $(SITE_DIR) && npm ci
 
 lock:
 	@uv lock
@@ -20,7 +21,7 @@ extract-photos: install
 	--output site/public/photos.json \
 	--thumbs-dir site/public/thumbs
 
-run:
+run: install
 	cd $(SITE_DIR) && npm run dev
 
 test: install
