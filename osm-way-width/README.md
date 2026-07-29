@@ -37,3 +37,12 @@ These scripts use multiple polylines from Strava running activies to estimate wi
    - `make way`
 5. Run the width calculations.
    - `make width` or `make segments`
+
+## Generated Data
+
+Fetched OSM extracts and the `segments` outputs (`width_segments.csv`, `width_segments.png`) are written under `$(DATA_DIR)`, which defaults to `~/data/osm-way-width/`. Override per run:
+
+```
+make segments DATA_DIR=/tmp/run-42
+make segments DATA_ROOT=/path/to/shared   # -> /path/to/shared/osm-way-width
+```

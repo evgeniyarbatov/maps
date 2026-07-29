@@ -2,9 +2,16 @@
 
 PYTHON := uv run python
 
+DATA_ROOT ?= $(HOME)/data
+REPO_NAME := $(notdir $(CURDIR))
+DATA_DIR  ?= $(DATA_ROOT)/$(REPO_NAME)
+
 OSM_URL = https://download.geofabrik.de/asia/vietnam-latest.osm.pbf
 
 DOTFILES_MK := $(HOME)/gitRepo/dotfiles/make/osm-country.mk
+
+# Set before the include: osm-country.mk only does `OSM_DIR ?=`.
+OSM_DIR := $(DATA_DIR)/osm
 
 .PHONY: country osm-country-fetch
 
@@ -19,17 +26,18 @@ country osm-country-fetch:
 	@exit 1
 endif
 
-OSM_DIR = osm
+# Tracked input (city boundary), independent of OSM_DIR/DATA_DIR.
 BOUNDARY_POLY = osm/times-city.poly
 
 WAY_ID = 1124683045
 WAY_START_NODE = 10284859794
 WAY_END_NODE = 10284859797
 
+# Tracked input (checked-in Strava polylines), not generated output.
 POLYLINE_DIR = data/polylines
 SEGMENT_LENGTH = 10
-WIDTH_SEGMENTS = data/width_segments.csv
-WIDTH_SEGMENTS_PNG = data/width_segments.png
+WIDTH_SEGMENTS = $(DATA_DIR)/width_segments.csv
+WIDTH_SEGMENTS_PNG = $(DATA_DIR)/width_segments.png
 
 install:
 	@uv sync
