@@ -42,12 +42,14 @@ Each step is a separate Makefile target.
 
 | Step | Command | Output |
 |------|---------|--------|
-| 1. OSM extract | `make extract-osm` | `osm/extract.osm` — convex hull of all GPX tracks + 250 m buffer |
-| 2. POI extraction | `make extract-pois` | `data/pois.json` — viewpoints, peaks, temples, churches, historic sites, museums, etc. |
-| 3. LLM validation | `make validate-pois` | `data/pois_validated.json` — filters obvious OSM misclassifications |
-| 4. LLM descriptions | `make describe-pois` | updates `data/pois_validated.json` — short noun-phrase labels from OSM tags |
-| 5. Map render | `make render-map` | `data/waypoints.png` — high-res contextily basemap |
-| 6. GPX export | `make export-gpx` | `data/waypoints.gpx` — Garmin waypoints with per-type icons and ASCII names |
+| 1. OSM extract | `make extract-osm` | `$DATA_DIR/osm/extract.osm` — convex hull of all GPX tracks + 250 m buffer |
+| 2. POI extraction | `make extract-pois` | `$DATA_DIR/pois.json` — viewpoints, peaks, temples, churches, historic sites, museums, etc. |
+| 3. LLM validation | `make validate-pois` | `$DATA_DIR/pois_validated.json` — filters obvious OSM misclassifications |
+| 4. LLM descriptions | `make describe-pois` | updates `$DATA_DIR/pois_validated.json` — short noun-phrase labels from OSM tags |
+| 5. Map render | `make render-map` | `$DATA_DIR/waypoints.png` — high-res contextily basemap |
+| 6. GPX export | `make export-gpx` | `$DATA_DIR/waypoints.gpx` — Garmin waypoints with per-type icons and ASCII names |
+
+`DATA_DIR` defaults to `~/data/osm-waypoints`; see [Outputs](#outputs) for how to override it.
 
 ### Run step by step
 
@@ -65,7 +67,7 @@ make export-gpx
 
 ## What you get
 
-- **Tight extract** — buffered convex hull polygon around your tracks (`osm/extract-polygon.geojson`), not a loose rectangle
+- **Tight extract** — buffered convex hull polygon around your tracks (`$DATA_DIR/osm/extract-polygon.geojson`), not a loose rectangle
 - **Forgiving POI filter** — keeps anything interesting on a walk; drops shops, parking, and tagging mistakes
 - **Short descriptions** — 3–8 word phrases like `Buddhist temple` or `491 m peak`, no action verbs
 - **Garmin-friendly GPX** — distinct `<sym>` icons per POI type, Vietnamese transliterated to ASCII
@@ -80,6 +82,7 @@ make export-gpx
 | `OLLAMA_MODEL` | `mistral-nemo` | Ollama model for validation and descriptions |
 | `OLLAMA_URL` | `http://localhost:11434` | Ollama API endpoint |
 | `MAP_DPI` | `300` | Map image resolution |
+| `DATA_DIR` | `~/data/osm-waypoints` | Where all generated osm/ and data/ outputs are written |
 
 ```bash
 make all GPX_DIR=~/Documents/gpx/my-trail BUFFER_KM=0.5
@@ -87,17 +90,18 @@ make all GPX_DIR=~/Documents/gpx/my-trail BUFFER_KM=0.5
 
 ## Outputs
 
-```
-osm/
-  vietnam-latest.osm.pbf    # country PBF (cached)
-  extract-polygon.geojson   # buffered convex hull
-  extract.osm               # regional OSM extract
+All generated files go under `DATA_DIR`, which defaults to `~/data/osm-waypoints` (`$DATA_ROOT/<repo-name>`, `DATA_ROOT` defaults to `~/data`). Override per run with `make <target> DATA_DIR=/tmp/run` or `make <target> DATA_ROOT=/path/to/shared`.
 
-data/
-  pois.json                 # raw POIs
-  pois_validated.json       # filtered POIs + short descriptions
-  waypoints.png             # map preview
-  waypoints.gpx             # upload to Garmin
+```
+$DATA_DIR/
+  osm/
+    vietnam-latest.osm.pbf    # country PBF (cached)
+    extract-polygon.geojson   # buffered convex hull
+    extract.osm               # regional OSM extract
+  pois.json                   # raw POIs
+  pois_validated.json         # filtered POIs + short descriptions
+  waypoints.png                 # map preview
+  waypoints.gpx                 # upload to Garmin
 ```
 
 ## Clean up

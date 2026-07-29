@@ -1,6 +1,10 @@
 # Uses uv (https://docs.astral.sh/uv) for dependency management — uv sync creates/updates .venv; run commands via uv run, no manual activation.
 # osm-waypoints pipeline
 
+DATA_ROOT ?= $(HOME)/data
+REPO_NAME := $(notdir $(CURDIR))
+DATA_DIR  ?= $(DATA_ROOT)/$(REPO_NAME)
+
 GPX_DIR ?= /Users/arbatov/Documents/gpx/nui-dinh
 BUFFER_KM ?= 0.25
 OLLAMA_MODEL ?= mistral-nemo
@@ -10,6 +14,7 @@ MAP_DPI ?= 300
 OSM_URL = https://download.geofabrik.de/asia/vietnam-latest.osm.pbf
 
 DOTFILES_MK := $(HOME)/gitRepo/dotfiles/make/osm-country.mk
+OSM_DIR := $(DATA_DIR)/osm
 
 .PHONY: country osm-country-fetch
 
@@ -24,11 +29,9 @@ endif
 
 COUNTRY_OSM_FILE = $(notdir $(OSM_URL))
 
-OSM_DIR = osm
-DATA_DIR = data
 SCRIPTS_DIR = scripts
 
-export GPX_DIR BUFFER_KM OLLAMA_MODEL OLLAMA_URL MAP_DPI
+export GPX_DIR BUFFER_KM OLLAMA_MODEL OLLAMA_URL MAP_DPI DATA_DIR OSM_DIR
 
 .PHONY: install brew-deps lock test country extract-osm extract-pois validate-pois describe-pois render-map export-gpx all clean help
 
@@ -76,10 +79,10 @@ help:
 	@echo "test          - run unit tests"
 	@echo "country       - download/link country OSM extract"
 	@echo "extract-osm   - build buffered polygon and cut country PBF"
-	@echo "extract-pois  - parse OSM extract into data/pois.json"
+	@echo "extract-pois  - parse OSM extract into $(DATA_DIR)/pois.json"
 	@echo "validate-pois - Ollama filter pass"
 	@echo "describe-pois - Ollama description pass"
-	@echo "render-map    - render data/waypoints.png"
-	@echo "export-gpx    - export data/waypoints.gpx"
+	@echo "render-map    - render $(DATA_DIR)/waypoints.png"
+	@echo "export-gpx    - export $(DATA_DIR)/waypoints.gpx"
 	@echo "all           - export-gpx render-map"
 	@echo "clean         - remove generated osm/data outputs and .venv"

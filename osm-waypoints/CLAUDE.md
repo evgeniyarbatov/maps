@@ -12,11 +12,13 @@ Primary use case: planning on-foot outings (not limited to mountain hiking) and 
 
 Five Makefile steps, run in order:
 
-1. `extract-osm` — convex hull of all GPX points, buffered by `BUFFER_KM`, written to `osm/extract-polygon.geojson`, then cut from country PBF via `osmium extract -p`
-2. `extract-pois` — parse `osm/extract.osm`, match POI tag rules, write `data/pois.json`
-3. `validate-pois` — Ollama filters each POI, write `data/pois_validated.json`
-4. `render-map` — plot validated POIs on a contextily basemap, write `data/waypoints.png`
-5. `export-gpx` — write `data/waypoints.gpx` with Garmin symbols and ASCII names
+1. `extract-osm` — convex hull of all GPX points, buffered by `BUFFER_KM`, written to `$DATA_DIR/osm/extract-polygon.geojson`, then cut from country PBF via `osmium extract -p`
+2. `extract-pois` — parse `$DATA_DIR/osm/extract.osm`, match POI tag rules, write `$DATA_DIR/pois.json`
+3. `validate-pois` — Ollama filters each POI, write `$DATA_DIR/pois_validated.json`
+4. `render-map` — plot validated POIs on a contextily basemap, write `$DATA_DIR/waypoints.png`
+5. `export-gpx` — write `$DATA_DIR/waypoints.gpx` with Garmin symbols and ASCII names
+
+`DATA_DIR` defaults to `~/data/osm-waypoints` (`$DATA_ROOT/<repo-name>`); override with `DATA_ROOT=` or `DATA_DIR=`.
 
 Run everything: `make all GPX_DIR=/path/to/gpx`
 
@@ -55,6 +57,7 @@ Environment variables (also exported by Makefile):
 | `OLLAMA_MODEL` | `mistral-nemo` | Pulled automatically if missing |
 | `OLLAMA_URL` | `http://localhost:11434` | |
 | `MAP_DPI` | `300` | |
+| `DATA_DIR` | `~/data/osm-waypoints` | All generated osm/ and data/ outputs |
 
 ## Implementation notes
 
@@ -84,8 +87,7 @@ Environment variables (also exported by Makefile):
 
 ### Gitignored outputs
 
-- `osm/*` except `osm/.gitkeep` (country PBF and extracts stay local)
-- `data/*` except `data/.gitkeep` (generated JSON, PNG, GPX)
+All generated outputs live under `$DATA_DIR` (outside the repo by default), not the in-tree `osm/`/`data/` directories. The in-tree `osm/*` and `data/*` (except `.gitkeep`) stay gitignored as a fallback for anyone who overrides `DATA_DIR` back into the repo.
 
 ## Development conventions
 
