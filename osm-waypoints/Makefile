@@ -86,3 +86,6 @@ help:
 	@echo "export-gpx    - export $(DATA_DIR)/waypoints.gpx"
 	@echo "all           - export-gpx render-map"
 	@echo "clean         - remove generated osm/data outputs and .venv"
+
+# Entry point: full waypoints extraction pipeline.
+run: all
