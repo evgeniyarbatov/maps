@@ -39,6 +39,8 @@ SEGMENT_LENGTH = 10
 WIDTH_SEGMENTS = $(DATA_DIR)/width_segments.csv
 WIDTH_SEGMENTS_PNG = $(DATA_DIR)/width_segments.png
 
+.PHONY: install lock area way width segments test run help
+
 install:
 	@uv sync
 
@@ -61,6 +63,11 @@ segments: install
 test: install
 	@$(PYTHON) -m unittest discover -s tests
 
+# Entry point: full pipeline (assumes `make country` was already run once).
+# area -> way -> segments, using the WAY_ID/BOUNDARY_POLY defaults in this Makefile.
+run: area way segments
+	@echo "Run complete."
+
 help:
 	@echo "install   - uv sync (create/update .venv and install deps)"
 	@echo "lock      - uv lock (refresh uv.lock)"
@@ -69,3 +76,4 @@ help:
 	@echo "width     - estimate way width along the polyline"
 	@echo "segments  - segment way width estimates and plot"
 	@echo "test      - run unit tests"
+	@echo "run       - entry point: area + way + segments (after one-time 'make country')"
