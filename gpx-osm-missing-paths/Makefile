@@ -83,3 +83,6 @@ test: ## Run pytest with coverage
 lint: ## Ruff + mypy
 	uv run ruff check src tests
 	uv run mypy src
+
+# Entry point: full pipeline.
+run: pipeline
