@@ -18,9 +18,9 @@ CITY_OSM := $(OSM_DIR)/$(CITY).osm
 
 # Raw GPX source: github.com/evgeniyarbatov/[private], per-city GeoParquet exports.
 # Optional LAT/LON/RADIUS_KM narrows `make gpx` to tracks near one point.
-LAT ?=
-LON ?=
-RADIUS_KM ?=
+LAT ?= 10.787919410913423
+LON ?= 106.70594249757384
+RADIUS_KM ?= 30
 
 help: ## Show this help
 	@grep -hE '^[a-zA-Z_-]+:.*?## .*$$' $(firstword $(MAKEFILE_LIST)) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
