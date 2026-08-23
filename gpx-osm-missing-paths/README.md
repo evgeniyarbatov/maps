@@ -26,14 +26,16 @@ cd gpx-osm-missing-paths
 make setup
 cp env.example .env   # optional; defaults target HCMC + Vietnam cache
 
-# 3. OSM (shared cache — do not download Geofabrik inside this repo)
-# Country PBF: ~/.cache/osm/vietnam-latest.osm.pbf
-# Maintained by dotfiles launchd com.arbatov.fetch-osm (weekly) or:
-make country          # calls ~/gitRepo/dotfiles/bin/fetch-osm
+# 3. Country OSM extract → ~/.cache/osm/vietnam-latest.osm.pbf
+# `make country` uses the author's private dotfiles helper if present (weekly
+# launchd refresh); without it, the command exits with the exact Geofabrik URL
+# and path to download the PBF to yourself. Either way, then:
+make country
 make city             # clip to osm/hcm.poly → osm/hcm.osm.pbf
 
 # 4. GPX input: either drop raw .gpx into ./gpx/ (gitignored) yourself, or fetch
-# from github.com/evgeniyarbatov/[private] (checked out to ~/Documents/data/[private])
+# from github.com/evgeniyarbatov/[private] (the author's private export repo,
+# checked out to ~/Documents/data/[private]) — most users will just use gpx/ directly
 make gpx LAT=10.7940 LON=106.7217 RADIUS_KM=5   # optional filter; omit for everything
 
 # 5. Full pipeline (fetch GPX + city clip + process + cluster + missing filter + name + extract)
@@ -62,7 +64,7 @@ make country URL=https://download.geofabrik.de/asia/thailand-latest.osm.pbf
 
 | Step | Command | What it does |
 |------|---------|--------------|
-| 0a | `make country` | Ensure country PBF in `~/.cache/osm` via **dotfiles fetch-osm** (no parallel download flow) |
+| 0a | `make country` | Ensure country PBF in `~/.cache/osm` — via the author's private dotfiles helper if present, else prints manual download instructions |
 | 0b | `make city` | Clip country PBF with `BOUNDARY_POLYGON` (default `osm/hcm.poly`) → `osm/<city>.osm.pbf` |
 | 0c | `make gpx` | Checkout/update `[private]`, convert its parquet tracks → `gpx/*.gpx` (optional `LAT`/`LON`/`RADIUS_KM` filter) |
 | 1 | `make process` | Parse every GPX, clean, simplify → `output/segments.*` |
@@ -90,12 +92,14 @@ Open the `.osm` in JOSM, load the GPX files from the subfolder, and you have per
 
 ## Requirements
 
-- Python 3.12+
+- Python 3.11+
 - `uv` (strongly preferred)
 - `osmium-tool` (city clip + per-cluster extracts); `make city` installs it via Homebrew if missing
   - macOS: `brew install osmium-tool`
   - Ubuntu/Debian: `apt install osmium-tool`
-- Shared country OSM cache from **dotfiles** (`com.arbatov.fetch-osm` → `~/.cache/osm/…`)
+- A country OSM PBF at `~/.cache/osm/<country>-latest.osm.pbf` — `make country` fetches this via the
+  author's private dotfiles helper if present, otherwise prints the Geofabrik URL and path to
+  download it to yourself
 
 ## Tuning for Your City / Data
 
@@ -112,7 +116,6 @@ See `docs/usage.md` for full parameter reference and recommended values for HCMC
 ## Advanced / Optional
 
 - **Incremental runs**: The pipeline is designed to be re-runnable. Add new GPX files to `gpx/` and re-run `make pipeline`. (Full reprocess is fast enough for personal collections of a few thousand files.)
-- **Visualization**: `make viz` (if implemented) produces a folium HTML overview of all clusters.
 
 ## Contributing & Philosophy
 

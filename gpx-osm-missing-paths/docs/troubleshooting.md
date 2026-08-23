@@ -5,8 +5,10 @@
 `Settings.resolve_osm_pbf()` checks, in order: `OSM_PBF_PATH`, the city clip
 (`osm/<city>.osm.pbf`), then the country cache (`~/.cache/osm/<country>-latest.osm.pbf`).
 
-- Missing country cache → `make country` (calls dotfiles `fetch-osm`), or wait for the weekly
-  launchd job `com.arbatov.fetch-osm`.
+- Missing country cache → `make country`. With the author's private dotfiles repo present at
+  `~/gitRepo/dotfiles`, this calls `fetch-osm` (or wait for the weekly launchd job
+  `com.arbatov.fetch-osm`). Without it, the command prints the exact Geofabrik URL and
+  `~/.cache/osm/...` path to download the PBF to yourself.
 - Missing city clip → `make city` (requires the country cache and `BOUNDARY_POLYGON` to exist).
 - Run `gpx-osm osm-paths` to see exactly which of the three candidates resolved and whether
   each file exists on disk.

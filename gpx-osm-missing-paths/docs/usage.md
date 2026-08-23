@@ -29,7 +29,7 @@ Copy `env.example` to `.env` and adjust. All are optional; defaults target HCMC.
 |----------|---------|---------|
 | `OSM_CACHE_DIR` | `~/.cache/osm` | Where dotfiles `fetch-osm` stores country PBFs |
 | `OSM_COUNTRY_FILE` | `vietnam-latest.osm.pbf` | Basename of the cached country PBF |
-| `OSM_URL` | Vietnam Geofabrik URL | Used only by `make country` (dotfiles `fetch-osm`) |
+| `OSM_URL` | Vietnam Geofabrik URL | Used by `make country` — passed to dotfiles `fetch-osm` if that private repo is present at `~/gitRepo/dotfiles`, otherwise printed as the manual download link |
 | `BOUNDARY_POLYGON` | `osm/hcm.poly` | City clip boundary (osmconvert `.poly`) |
 | `OSM_PBF_PATH` | unset | Explicit override; wins over the derived city clip |
 

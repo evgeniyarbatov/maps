@@ -35,11 +35,11 @@ clusters/{slug}/
 
 ## OSM source (shared cache — no project-local download)
 
-Country PBFs are **not** owned by this repo. They live under `~/.cache/osm`, refreshed weekly by launchd agent `com.arbatov.fetch-osm` (`dotfiles/bin/fetch-osm`).
+Country PBFs are **not** owned by this repo. They live under `~/.cache/osm`, refreshed weekly by launchd agent `com.arbatov.fetch-osm` (`dotfiles/bin/fetch-osm`) — a private helper repo of the author's. The `Makefile` includes `dotfiles/make/osm-country.mk` only if that repo is checked out at `~/gitRepo/dotfiles`; otherwise `make country` fails with the exact Geofabrik URL and cache path so anyone can fetch the PBF manually and proceed.
 
 | Layer | How | Path |
 |-------|-----|------|
-| Country | `make country` → `dotfiles/make/osm-country.mk` | `$(OSM_CACHE_DIR)/vietnam-latest.osm.pbf` |
+| Country | `make country` → `dotfiles/make/osm-country.mk` if present, else manual-download error | `$(OSM_CACHE_DIR)/vietnam-latest.osm.pbf` |
 | City | `make city` → `osmium extract --polygon=$(BOUNDARY_POLYGON)` | `osm/hcm.osm.pbf` (default) |
 | Per-cluster | `osmium extract --bbox` | `clusters/{slug}/{slug}.osm` |
 
@@ -62,7 +62,7 @@ Python resolution: `Settings.resolve_osm_pbf()` prefers `OSM_PBF_PATH`, then cit
 ## GPX source (`[private]`, personal export repo)
 
 Raw GPX comes from [`github.com/evgeniyarbatov/[private]`](https://github.com/evgeniyarbatov/[private]),
-a personal Strava/Android/Casio activity export, pre-simplified (RDP 10m) into one GeoParquet
+the author's private Strava/Android/Casio activity export repo, pre-simplified (RDP 10m) into one GeoParquet
 file per city under `data/parquet/<source>/<city>.parquet` (columns: `name`, `geometry`
 LineString EPSG:4326, `city`). It is **not** GPX-specific to this project — it spans every
 city the mapper has run in — so `make gpx` (`gpx-osm fetch-gpx`, `gpx_fetcher.py`) accepts an
@@ -139,7 +139,7 @@ One-time export of named features from city PBF → `output/pois.*`. Rank by dis
 
 ## Non-Goals (for v1)
 
-- Second OSM download/mirror system (use dotfiles)
+- Second OSM download/mirror system (use dotfiles, or fetch the PBF manually per the `make country` error message)
 - Perfect automatic centerline from noisy traces
 - Full map-matching / direct OSM upload
 - Web UI

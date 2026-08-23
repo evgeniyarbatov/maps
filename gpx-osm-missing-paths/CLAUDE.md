@@ -24,7 +24,7 @@ This file contains project-specific rules and context. **Always follow these whe
 
 ## Never Do
 - Commit anything inside `gpx/`, `clusters/`, `output/`, or large `.osm`/`.pbf` files (city `osm/*.poly` boundaries are OK).
-- Implement a second Geofabrik/OSM download or refresh system. Country PBF comes from **dotfiles** `fetch-osm` / launchd `com.arbatov.fetch-osm` → `~/.cache/osm`. Use `include $(HOME)/gitRepo/dotfiles/make/osm-country.mk` only.
+- Implement a second Geofabrik/OSM download or refresh system. Country PBF comes from **dotfiles** `fetch-osm` / launchd `com.arbatov.fetch-osm` → `~/.cache/osm`, via `include $(HOME)/gitRepo/dotfiles/make/osm-country.mk` when that private repo is present. When it isn't (e.g. a clone without dotfiles), `make country` must fail with the exact URL/path to fetch manually — never add a fallback downloader.
 - Rely on internet/Overpass after the country PBF is cached. City work is local `osmium` on `CITY_OSM_PBF`.
 - Introduce heavy services (PostGIS, full DuckDB spatial, Elasticsearch) without strong justification and Makefile opt-in.
 - Make the core `make pipeline` depend on a running OSRM server. OSRM is advanced/optional only.

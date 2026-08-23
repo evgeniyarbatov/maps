@@ -3,7 +3,21 @@
 # Country OSM: shared cache from dotfiles (launchd com.arbatov.fetch-osm → ~/.cache/osm).
 # Do not re-download Geofabrik here; call fetch-osm via osm-country.mk only.
 URL = https://download.geofabrik.de/asia/vietnam-latest.osm.pbf
-include $(HOME)/gitRepo/dotfiles/make/osm-country.mk
+DOTFILES_MK := $(HOME)/gitRepo/dotfiles/make/osm-country.mk
+
+ifneq ($(wildcard $(DOTFILES_MK)),)
+include $(DOTFILES_MK)
+else
+OSM_CACHE_DIR ?= $(HOME)/.cache/osm
+OSM_URL ?= $(URL)
+COUNTRY_OSM_FILE ?= $(notdir $(OSM_URL))
+COUNTRY_OSM_PATH := $(OSM_CACHE_DIR)/$(COUNTRY_OSM_FILE)
+
+country osm-country-fetch:
+	@echo "error: '$@' needs evgeniyarbatov/dotfiles (private helper); not found at $(DOTFILES_MK)." >&2
+	@echo "Fetch manually: download $(OSM_URL) into $(COUNTRY_OSM_PATH), then retry." >&2
+	@exit 1
+endif
 
 # City scope: any osmium-compatible .poly under osm/ (or absolute path). Default: HCMC.
 OSM_DIR = osm
