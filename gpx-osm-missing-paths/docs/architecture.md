@@ -8,6 +8,9 @@
    ▼ make city  (osmconvert -B=osm/<city>.poly)
 osm/<city>.osm.pbf                        (default: osm/hcm.osm.pbf)
    │
+~/Documents/data/[private]                 (github.com/evgeniyarbatov/[private], git clone/pull)
+   │
+   ▼ make gpx  (gpx_fetcher.py — parquet tracks → .gpx, optional lat/lon/radius filter)
 gpx/*.gpx
    │
    ▼ gpx_processor.py
@@ -56,16 +59,40 @@ make country URL=https://download.geofabrik.de/asia/thailand-latest.osm.pbf
 
 Python resolution: `Settings.resolve_osm_pbf()` prefers `OSM_PBF_PATH`, then city clip, then country cache (`src/gpx_osm_missing_paths/config.py`).
 
+## GPX source (`[private]`, personal export repo)
+
+Raw GPX comes from [`github.com/evgeniyarbatov/[private]`](https://github.com/evgeniyarbatov/[private]),
+a personal Strava/Android/Casio activity export, pre-simplified (RDP 10m) into one GeoParquet
+file per city under `data/parquet/<source>/<city>.parquet` (columns: `name`, `geometry`
+LineString EPSG:4326, `city`). It is **not** GPX-specific to this project — it spans every
+city the mapper has run in — so `make gpx` (`gpx-osm fetch-gpx`, `gpx_fetcher.py`) accepts an
+optional `--lat/--lon/--radius-km` filter to keep only tracks passing within that radius before
+writing them out as individual `.gpx` files (coordinates only — the parquet export carries no
+per-point time/elevation).
+
+| Layer | How | Path |
+|-------|-----|------|
+| Checkout | `git clone`/`pull` (`gpx_fetcher.checkout_gpx_data_repo`) | `GPX_DATA_ROOT/[private]` (default `~/Documents/data/[private]`) |
+| Per-track GPX | one file per parquet row, optional radius filter | `GPX_DIR/*.gpx` |
+
+The checkout lives outside the project directory (personal data, not project data) and is
+re-pulled on every `make gpx` run, matching the read-only relationship this project has with
+the shared OSM country cache under `~/.cache/osm`.
+
 ## Core Components
 
-### 1. Models (`models.py`)
+### 1. GPX Fetching (`gpx_fetcher.py`)
+Checkout/update the `[private]` repo; convert its per-city parquet tracks into `GPX_DIR/*.gpx`,
+optionally filtered to those passing within `--radius-km` of `--lat/--lon`.
+
+### 2. Models (`models.py`)
 Pydantic v2 models:
 - `GPXSegment`: one ~`SEGMENT_CHUNK_LENGTH_M` chunk of a cleaned `<trkseg>`
 - `Cluster`: group of segments for one physical path; includes `num_gpx_traces`, `avg_length_m`, `osm_coverage_fraction`
 - `POI`: landmark from OSM used for naming
 - `Settings`: all tunable parameters + paths
 
-### 2. GPX Processing
+### 3. GPX Processing
 - Turn messy real-world GPX into clean LineStrings in EPSG:4326.
 - Project to local UTM only when meter-accurate buffering/length is needed.
 - **City clip.** Segments whose midpoint falls outside `BOUNDARY_POLYGON` are dropped so
@@ -78,7 +105,7 @@ Pydantic v2 models:
   cut by cumulative distance, not by OSM way boundaries, so consecutive chunks share their
   boundary point and there's no gap between them. Each chunk becomes its own `GPXSegment`.
 
-### 3. Clustering Strategy
+### 4. Clustering Strategy
 Seed-based same-stretch matching (not transitive connected components):
 
 1. Project segments to local UTM
@@ -89,13 +116,13 @@ Seed-based same-stretch matching (not transitive connected components):
 
 JOSM bundles further require `MIN_CLUSTER_TRACES` (default 2) and low OSM coverage.
 
-### 4. Missing-path filter
+### 5. Missing-path filter
 Compare cluster representative geometry to path-like highways in the **city** PBF. Only low-coverage clusters become JOSM bundles.
 
-### 5. POI-based Naming
+### 6. POI-based Naming
 One-time export of named features from city PBF → `output/pois.*`. Rank by distance and importance; slugify for directories.
 
-### 6. Per-cluster OSM Extraction
+### 7. Per-cluster OSM Extraction
 `osmium extract` with ~50m buffer from city PBF. Keeps JOSM files small while giving connection context.
 
 ## Why This Stack?

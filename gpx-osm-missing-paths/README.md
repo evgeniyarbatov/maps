@@ -32,9 +32,11 @@ cp env.example .env   # optional; defaults target HCMC + Vietnam cache
 make country          # calls ~/gitRepo/dotfiles/bin/fetch-osm
 make city             # clip to osm/hcm.poly → osm/hcm.osm.pbf
 
-# 4. Drop raw .gpx into ./gpx/ (gitignored)
+# 4. GPX input: either drop raw .gpx into ./gpx/ (gitignored) yourself, or fetch
+# from github.com/evgeniyarbatov/[private] (checked out to ~/Documents/data/[private])
+make gpx LAT=10.7940 LON=106.7217 RADIUS_KM=5   # optional filter; omit for everything
 
-# 5. Full pipeline (city clip + process + cluster + missing filter + name + extract)
+# 5. Full pipeline (fetch GPX + city clip + process + cluster + missing filter + name + extract)
 make pipeline
 
 # 6. Open results
@@ -62,12 +64,13 @@ make country URL=https://download.geofabrik.de/asia/thailand-latest.osm.pbf
 |------|---------|--------------|
 | 0a | `make country` | Ensure country PBF in `~/.cache/osm` via **dotfiles fetch-osm** (no parallel download flow) |
 | 0b | `make city` | Clip country PBF with `BOUNDARY_POLYGON` (default `osm/hcm.poly`) → `osm/<city>.osm.pbf` |
+| 0c | `make gpx` | Checkout/update `[private]`, convert its parquet tracks → `gpx/*.gpx` (optional `LAT`/`LON`/`RADIUS_KM` filter) |
 | 1 | `make process` | Parse every GPX, clean, simplify → `output/segments.*` |
 | 2 | `make cluster` | Cluster overlapping segments → representative lines |
 | 3 | `make filter-missing` | Keep only clusters poorly covered by OSM ways |
 | 4 | `make name` | POI-based human names for missing clusters |
 | 5 | `make extract` | 50m `.osm` + GPX bundle + `cluster_meta.json` (`num_gpx_traces`, `avg_length_m`) |
-| All | `make pipeline` | `city` then 1→5 |
+| All | `make pipeline` | `gpx`, `city`, then 1→5 |
 
 ## Output Structure
 

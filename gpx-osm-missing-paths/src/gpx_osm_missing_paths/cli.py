@@ -8,6 +8,7 @@ from rich.table import Table
 
 from gpx_osm_missing_paths.clusterer import cluster as run_cluster
 from gpx_osm_missing_paths.config import get_settings
+from gpx_osm_missing_paths.gpx_fetcher import fetch_gpx as run_fetch_gpx
 from gpx_osm_missing_paths.gpx_processor import load_segments
 from gpx_osm_missing_paths.gpx_processor import process as run_process
 from gpx_osm_missing_paths.missing_filter import filter_missing as run_filter_missing
@@ -51,6 +52,44 @@ def osm_paths() -> None:
     except FileNotFoundError as exc:
         table.add_row("resolve_osm_pbf()", str(exc), "no")
     console.print(table)
+
+
+@app.command("fetch-gpx")
+def fetch_gpx(
+    lat: float | None = typer.Option(
+        None, "--lat", help="Latitude of filter point (requires --lon and --radius-km)"
+    ),
+    lon: float | None = typer.Option(
+        None, "--lon", help="Longitude of filter point (requires --lat and --radius-km)"
+    ),
+    radius_km: float | None = typer.Option(
+        None, "--radius-km", help="Keep only tracks within this many km of --lat/--lon"
+    ),
+) -> None:
+    """Checkout/update [private] and convert its parquet tracks into GPX_DIR."""
+    given = [v is not None for v in (lat, lon, radius_km)]
+    if any(given) and not all(given):
+        console.print("[red]--lat, --lon and --radius-km must be given together.[/red]")
+        raise typer.Exit(code=1)
+
+    settings = get_settings()
+    with console.status(f"[bold cyan]Checking out {settings.gpx_data_repo_url}..."):
+        summary = run_fetch_gpx(settings, lat, lon, radius_km)
+
+    table = Table(title="Fetch GPX summary")
+    table.add_column("Metric")
+    table.add_column("Value", justify="right")
+    table.add_row("Tracks seen", str(summary.tracks_seen))
+    table.add_row("Tracks kept", str(summary.tracks_kept))
+    table.add_row("Tracks skipped (no geometry)", str(summary.tracks_skipped_no_geometry))
+    table.add_row("GPX files written", str(summary.files_written))
+    console.print(table)
+    if summary.files_written:
+        console.print(f"[green]Wrote {summary.files_written} files → {settings.gpx_dir}[/green]")
+    else:
+        console.print(
+            "[yellow]No tracks matched — check --lat/--lon/--radius-km or the repo contents.[/yellow]"
+        )
 
 
 @app.command()
@@ -205,7 +244,8 @@ def extract() -> None:
 def pipeline() -> None:
     """Full pipeline: process -> cluster -> filter-missing -> name -> extract.
 
-    Prefer ``make pipeline``, which also runs the city PBF clip first.
+    Prefer ``make pipeline``, which also fetches raw GPX (``make gpx``) and runs
+    the city PBF clip first.
     """
     process()
     cluster()

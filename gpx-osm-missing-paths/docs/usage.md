@@ -6,6 +6,7 @@ All commands run via `uv run gpx-osm <command>`, or the matching `make <target>`
 
 | Command | Make target | Description |
 |---------|-------------|-------------|
+| `gpx-osm fetch-gpx` | `make gpx` | Checkout/update `[private]`, convert its parquet tracks into `GPX_DIR` |
 | `gpx-osm process` | `make process` | Parse/clean every GPX under `GPX_DIR` → `output/segments.{geojson,parquet}` |
 | `gpx-osm cluster` | `make cluster` | Group overlapping segments → `output/clusters_raw.geojson` |
 | `gpx-osm filter-missing` | `make filter-missing` | Keep clusters poorly covered by OSM → `output/clusters_missing.geojson` |
@@ -40,6 +41,13 @@ Copy `env.example` to `.env` and adjust. All are optional; defaults target HCMC.
 | `CLUSTERS_DIR` | `./clusters` |
 | `OUTPUT_DIR` | `./output` |
 
+### Raw GPX source (`make gpx`)
+
+| Variable | Default | Meaning |
+|----------|---------|---------|
+| `GPX_DATA_REPO_URL` | `https://github.com/evgeniyarbatov/[private].git` | Repo of per-city GeoParquet track exports |
+| `GPX_DATA_ROOT` | `~/Documents/data` | Checkout lives at `GPX_DATA_ROOT/[private]` (outside the project dir) |
+
 ### Clustering & naming knobs
 
 | Variable | Default | Meaning |
@@ -57,6 +65,23 @@ Copy `env.example` to `.env` and adjust. All are optional; defaults target HCMC.
 | `MIN_CLUSTER_TRACES` | 2 | Min distinct GPX files before a poorly covered cluster becomes a JOSM bundle (raise to 3 for a shorter list) |
 | `EXISTING_PATH_MATCH_BUFFER_M` | 12 | Buffer used when computing OSM coverage |
 | `MISSING_COVERAGE_THRESHOLD` | 0.45 | Below this fraction covered → cluster is a missing-path candidate |
+
+## Fetching GPX from `[private]`
+
+[`[private]`](https://github.com/evgeniyarbatov/[private]) is a personal export repo of Strava/
+Android/Casio activity history, pre-simplified into per-city GeoParquet files (one row per
+track, no per-point time/elevation). `make gpx` clones/pulls it into `GPX_DATA_ROOT/[private]`
+and writes one `.gpx` file per track into `GPX_DIR`:
+
+```bash
+make gpx                                        # every track in [private]
+make gpx LAT=10.7940 LON=106.7217 RADIUS_KM=5    # only tracks passing within 5km of a point
+make pipeline LAT=10.7940 LON=106.7217 RADIUS_KM=5  # same filter, then the full pipeline
+```
+
+`[private]` spans many cities/countries the mapper has run in; LAT/LON/RADIUS_KM keeps only
+tracks relevant to the city currently being mapped (all three must be given together, or
+omitted together for no filter). `make pipeline` always runs `gpx` first.
 
 ## Country / City Switching
 

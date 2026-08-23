@@ -43,6 +43,7 @@ This file contains project-specific rules and context. **Always follow these whe
 ## Key Files & Their Responsibilities
 - `src/gpx_osm_missing_paths/models.py` — Single source of truth for `GPXSegment`, `Cluster`, `POI`.
 - `config.py` — Loads `.env` + defaults into Pydantic `Settings` (shared OSM cache, city poly, clustering knobs).
+- `gpx_fetcher.py` — Checkout `[private]` repo + convert its parquet tracks into `GPX_DIR/*.gpx` (writes raw GPX XML directly, no `gpxpy`, so `gpx_processor.py` stays the only `gpxpy` touchpoint).
 - `gpx_processor.py` — The only place that touches `gpxpy`. Produces clean segments.
 - `clusterer.py` — Documented clustering heuristic. Algorithm changes → update comment + architecture doc.
 - `missing_filter.py` — Coverage vs OSM ways; product gate for which clusters get bundles.
@@ -50,7 +51,7 @@ This file contains project-specific rules and context. **Always follow these whe
 - `osm_extractor.py` — `osmium` extracts + buffer math + bundle writing (`cluster_meta.json`). Atomic writes preferred.
 - `cli.py` — Typer commands only. Thin orchestration + pretty printing.
 - `utils.py` — Small pure helpers (haversine, bearing, slugify, UTM zone guess, etc.).
-- `Makefile` — `country` / `city` / pipeline; includes `dotfiles/make/osm-country.mk`.
+- `Makefile` — `gpx` / `country` / `city` / pipeline; includes `dotfiles/make/osm-country.mk`.
 - `osm/*.poly` — Committed city boundaries (default `hcm.poly`).
 
 ## Clustering Heuristic Notes (Important Context)

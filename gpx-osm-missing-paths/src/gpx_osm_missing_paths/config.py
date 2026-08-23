@@ -47,6 +47,12 @@ class Settings(BaseSettings):
     clusters_dir: Path = Field(default=Path("./clusters"))
     output_dir: Path = Field(default=Path("./output"))
 
+    # Raw GPX source: github.com/evgeniyarbatov/[private], per-city GeoParquet exports.
+    # Checked out under GPX_DATA_ROOT/<repo name> — kept outside the project directory
+    # since it's the mapper's personal activity history, not project data.
+    gpx_data_repo_url: str = Field(default="https://github.com/evgeniyarbatov/[private].git")
+    gpx_data_root: Path = Field(default=Path("~/Documents/data"))
+
     min_segment_length_m: float = 25.0
     # Long runs (up to ~30km) cover many streets; only a fraction of any one run is
     # ever the same physical path as another. Chunking to street-sized pieces before
@@ -81,6 +87,7 @@ class Settings(BaseSettings):
         "gpx_dir",
         "clusters_dir",
         "output_dir",
+        "gpx_data_root",
         mode="before",
     )
     @classmethod
@@ -115,6 +122,14 @@ class Settings(BaseSettings):
     def city_osm_xml(self) -> Path:
         """XML twin of the city extract (optional; osmium cat)."""
         return (self.osm_dir / f"{self.city_slug}.osm").resolve()
+
+    @property
+    def gpx_data_repo_dir(self) -> Path:
+        """Local checkout of ``gpx_data_repo_url`` under ``gpx_data_root`` (default ``~/Documents/data/[private]``)."""
+        name = self.gpx_data_repo_url.rstrip("/").rsplit("/", 1)[-1]
+        if name.endswith(".git"):
+            name = name[: -len(".git")]
+        return _expand(self.gpx_data_root) / name
 
     def resolve_osm_pbf(self) -> Path:
         """PBF used by filter / name / per-cluster extracts.

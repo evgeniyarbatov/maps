@@ -13,8 +13,14 @@ CITY_OSM_PBF := $(OSM_DIR)/$(CITY).osm.pbf
 CITY_OSM := $(OSM_DIR)/$(CITY).osm
 
 .PHONY: help setup install country city osm-check \
-	process cluster filter-missing name extract pipeline \
+	gpx process cluster filter-missing name extract pipeline \
 	clean test lint
+
+# Raw GPX source: github.com/evgeniyarbatov/[private], per-city GeoParquet exports.
+# Optional LAT/LON/RADIUS_KM narrows `make gpx` to tracks near one point.
+LAT ?=
+LON ?=
+RADIUS_KM ?=
 
 help: ## Show this help
 	@grep -hE '^[a-zA-Z_-]+:.*?## .*$$' $(firstword $(MAKEFILE_LIST)) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -56,6 +62,9 @@ osm-check: ## Verify country cache + city extract exist
 
 # --- Pipeline (uses city PBF as OSM_PBF_PATH) ---
 
+gpx: ## Fetch GPX tracks from [private] (parquet) into GPX_DIR; optional LAT/LON/RADIUS_KM filter
+	uv run gpx-osm fetch-gpx $(if $(LAT),--lat $(LAT)) $(if $(LON),--lon $(LON)) $(if $(RADIUS_KM),--radius-km $(RADIUS_KM))
+
 process: ## Parse/clean GPX → output/segments.*
 	uv run gpx-osm process
 
@@ -71,7 +80,7 @@ name: osm-check ## POI names for missing clusters
 extract: osm-check ## JOSM bundles (missing clusters only)
 	OSM_PBF_PATH=$(CITY_OSM_PBF) uv run gpx-osm extract
 
-pipeline: city process cluster filter-missing name extract ## Full pipeline (city clip + missing-path bundles)
+pipeline: gpx city process cluster filter-missing name extract ## Full pipeline (fetch GPX + city clip + missing-path bundles)
 
 clean: ## Remove processed data and outputs (keep raw gpx + city polys)
 	rm -rf data/processed/* output/* clusters/* || true
