@@ -19,8 +19,13 @@ country osm-country-fetch:
 	@exit 1
 endif
 
+# All generated pipeline data (gpx/, output/, clusters/, city OSM clip) lives outside the
+# repo, under DATA_DIR. Committed boundary polys stay in-repo under osm/.
+DATA_ROOT ?= $(HOME)/Documents/data
+DATA_DIR ?= $(DATA_ROOT)/gpx-osm-missing-paths
+
 # City scope: any osmium-compatible .poly under osm/ (or absolute path). Default: HCMC.
-OSM_DIR = osm
+OSM_DIR = $(DATA_DIR)/osm
 BOUNDARY_POLYGON ?= osm/hcm.poly
 CITY := $(basename $(notdir $(BOUNDARY_POLYGON)))
 CITY_OSM_PBF := $(OSM_DIR)/$(CITY).osm.pbf
@@ -95,9 +100,9 @@ extract: osm-check ## JOSM bundles (missing clusters only)
 
 pipeline: gpx city process cluster filter-missing name extract ## Full pipeline (fetch GPX + city clip + missing-path bundles)
 
-clean: ## Remove processed data and outputs (keep raw gpx + city polys)
-	rm -rf data/processed/* output/* clusters/* || true
-	@echo "🧹 Cleaned processed/, output/, clusters/"
+clean: ## Remove processed data and outputs under DATA_DIR (keep raw gpx + city polys)
+	rm -rf "$(DATA_DIR)/output"/* "$(DATA_DIR)/clusters"/* || true
+	@echo "🧹 Cleaned $(DATA_DIR)/output, $(DATA_DIR)/clusters"
 
 test: ## Run pytest with coverage
 	uv run pytest

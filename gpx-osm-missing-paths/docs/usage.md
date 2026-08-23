@@ -7,15 +7,15 @@ All commands run via `uv run gpx-osm <command>`, or the matching `make <target>`
 | Command | Make target | Description |
 |---------|-------------|-------------|
 | `gpx-osm fetch-gpx` | `make gpx` | Checkout/update `[private]`, convert its parquet tracks into `GPX_DIR` |
-| `gpx-osm process` | `make process` | Parse/clean every GPX under `GPX_DIR` → `output/segments.{geojson,parquet}` |
-| `gpx-osm cluster` | `make cluster` | Group overlapping segments → `output/clusters_raw.geojson` |
-| `gpx-osm filter-missing` | `make filter-missing` | Keep clusters poorly covered by OSM → `output/clusters_missing.geojson` |
-| `gpx-osm name` | `make name` | POI-based human names for missing clusters → `output/named_clusters.geojson` |
-| `gpx-osm extract` | `make extract` | Write `clusters/{slug}/` JOSM bundles |
+| `gpx-osm process` | `make process` | Parse/clean every GPX under `GPX_DIR` → `$OUTPUT_DIR/segments.{geojson,parquet}` |
+| `gpx-osm cluster` | `make cluster` | Group overlapping segments → `$OUTPUT_DIR/clusters_raw.geojson` |
+| `gpx-osm filter-missing` | `make filter-missing` | Keep clusters poorly covered by OSM → `$OUTPUT_DIR/clusters_missing.geojson` |
+| `gpx-osm name` | `make name` | POI-based human names for missing clusters → `$OUTPUT_DIR/named_clusters.geojson` |
+| `gpx-osm extract` | `make extract` | Write `$CLUSTERS_DIR/{slug}/` JOSM bundles |
 | `gpx-osm pipeline` | `make pipeline` | `city` clip, then all of the above in order |
 | `gpx-osm osm-paths` | — | Print resolved country/city/active OSM PBF paths (debug) |
 
-Each stage after `process` reads and rewrites `output/clusters_state.json` — the full working
+Each stage after `process` reads and rewrites `$OUTPUT_DIR/clusters_state.json` — the full working
 set of `Cluster` objects — so the pipeline can be run as separate CLI invocations (as the
 Makefile does) without recomputing earlier stages.
 
@@ -35,11 +35,16 @@ Copy `env.example` to `.env` and adjust. All are optional; defaults target HCMC.
 
 ### Directories
 
+All generated pipeline data lives outside the repo by default, under
+`~/Documents/data/gpx-osm-missing-paths/`. `OSM_DIR` (the generated city PBF/XML clip; not an
+env var — set via the Makefile) defaults alongside it, at `.../osm`. The committed city
+boundary poly (`BOUNDARY_POLYGON`, see above) stays in-repo under `osm/`.
+
 | Variable | Default |
 |----------|---------|
-| `GPX_DIR` | `./gpx` |
-| `CLUSTERS_DIR` | `./clusters` |
-| `OUTPUT_DIR` | `./output` |
+| `GPX_DIR` | `~/Documents/data/gpx-osm-missing-paths/gpx` |
+| `CLUSTERS_DIR` | `~/Documents/data/gpx-osm-missing-paths/clusters` |
+| `OUTPUT_DIR` | `~/Documents/data/gpx-osm-missing-paths/output` |
 
 ### Raw GPX source (`make gpx`)
 
@@ -99,10 +104,11 @@ make country URL=https://download.geofabrik.de/asia/thailand-latest.osm.pbf
 
 ```bash
 make setup
-cp -r samples/*.gpx gpx/            # gpx/ is gitignored; samples/ is committed
+mkdir -p ~/Documents/data/gpx-osm-missing-paths/gpx
+cp samples/*.gpx ~/Documents/data/gpx-osm-missing-paths/gpx/   # samples/ is committed; GPX_DIR is not
 make city                           # requires the Vietnam PBF in ~/.cache/osm
 make process cluster filter-missing name extract
-ls clusters/
+ls ~/Documents/data/gpx-osm-missing-paths/clusters/
 ```
 
 `sample_alley_01.gpx` and `sample_alley_02.gpx` are two independent traces of the same ~150m

@@ -37,15 +37,16 @@ class Settings(BaseSettings):
         description="Geofabrik (or other) URL; basename must match osm_country_file when using make country.",
     )
 
-    # City boundary → local clip under osm/
+    # City boundary poly is committed input, stays in-repo under osm/.
     boundary_polygon: Path = Field(default=Path("osm/hcm.poly"))
-    osm_dir: Path = Field(default=Path("osm"))
+    # Generated city PBF/XML clip + all pipeline working data live outside the repo.
+    osm_dir: Path = Field(default=Path("~/Documents/data/gpx-osm-missing-paths/osm"))
     # Explicit override after make city; empty → derive from boundary basename
     osm_pbf_path: Path | None = Field(default=None)
 
-    gpx_dir: Path = Field(default=Path("./gpx"))
-    clusters_dir: Path = Field(default=Path("./clusters"))
-    output_dir: Path = Field(default=Path("./output"))
+    gpx_dir: Path = Field(default=Path("~/Documents/data/gpx-osm-missing-paths/gpx"))
+    clusters_dir: Path = Field(default=Path("~/Documents/data/gpx-osm-missing-paths/clusters"))
+    output_dir: Path = Field(default=Path("~/Documents/data/gpx-osm-missing-paths/output"))
 
     # Raw GPX source: github.com/evgeniyarbatov/[private], per-city GeoParquet exports.
     # Checked out under GPX_DATA_ROOT/<repo name> — kept outside the project directory
@@ -94,14 +95,14 @@ class Settings(BaseSettings):
     def _coerce_path(cls, value: object) -> Path:
         if value is None or value == "":
             raise ValueError("path setting must not be empty")
-        return Path(str(value))
+        return Path(str(value)).expanduser()
 
     @field_validator("osm_pbf_path", mode="before")
     @classmethod
     def _coerce_optional_path(cls, value: object) -> Path | None:
         if value is None or value == "":
             return None
-        return Path(str(value))
+        return Path(str(value)).expanduser()
 
     @property
     def country_osm_path(self) -> Path:

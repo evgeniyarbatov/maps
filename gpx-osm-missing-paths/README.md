@@ -26,23 +26,26 @@ cd gpx-osm-missing-paths
 make setup
 cp env.example .env   # optional; defaults target HCMC + Vietnam cache
 
+# All generated pipeline data (GPX, city OSM clip, clusters) lives outside the repo,
+# under ~/Documents/data/gpx-osm-missing-paths/ by default (override in .env).
+
 # 3. Country OSM extract → ~/.cache/osm/vietnam-latest.osm.pbf
 # `make country` uses the author's private dotfiles helper if present (weekly
 # launchd refresh); without it, the command exits with the exact Geofabrik URL
 # and path to download the PBF to yourself. Either way, then:
 make country
-make city             # clip to osm/hcm.poly → osm/hcm.osm.pbf
+make city             # clip to osm/hcm.poly → ~/Documents/data/gpx-osm-missing-paths/osm/hcm.osm.pbf
 
-# 4. GPX input: either drop raw .gpx into ./gpx/ (gitignored) yourself, or fetch
-# from github.com/evgeniyarbatov/[private] (the author's private export repo,
-# checked out to ~/Documents/data/[private]) — most users will just use gpx/ directly
+# 4. GPX input: either drop raw .gpx into ~/Documents/data/gpx-osm-missing-paths/gpx/
+# yourself, or fetch from github.com/evgeniyarbatov/[private] (the author's private
+# export repo, checked out to ~/Documents/data/[private]) — most users will just drop files in
 make gpx LAT=10.7940 LON=106.7217 RADIUS_KM=5   # optional filter; omit for everything
 
 # 5. Full pipeline (fetch GPX + city clip + process + cluster + missing filter + name + extract)
 make pipeline
 
 # 6. Open results
-open clusters/
+open ~/Documents/data/gpx-osm-missing-paths/clusters/
 # For any cluster:
 #   - Drag the .osm into JOSM
 #   - Drag the .gpx files from its gpx/ subfolder as reference layers
@@ -65,9 +68,9 @@ make country URL=https://download.geofabrik.de/asia/thailand-latest.osm.pbf
 | Step | Command | What it does |
 |------|---------|--------------|
 | 0a | `make country` | Ensure country PBF in `~/.cache/osm` — via the author's private dotfiles helper if present, else prints manual download instructions |
-| 0b | `make city` | Clip country PBF with `BOUNDARY_POLYGON` (default `osm/hcm.poly`) → `osm/<city>.osm.pbf` |
-| 0c | `make gpx` | Checkout/update `[private]`, convert its parquet tracks → `gpx/*.gpx` (optional `LAT`/`LON`/`RADIUS_KM` filter) |
-| 1 | `make process` | Parse every GPX, clean, simplify → `output/segments.*` |
+| 0b | `make city` | Clip country PBF with `BOUNDARY_POLYGON` (default `osm/hcm.poly`) → `$OSM_DIR/<city>.osm.pbf` |
+| 0c | `make gpx` | Checkout/update `[private]`, convert its parquet tracks → `$GPX_DIR/*.gpx` (optional `LAT`/`LON`/`RADIUS_KM` filter) |
+| 1 | `make process` | Parse every GPX, clean, simplify → `$OUTPUT_DIR/segments.*` |
 | 2 | `make cluster` | Cluster overlapping segments → representative lines |
 | 3 | `make filter-missing` | Keep only clusters poorly covered by OSM ways |
 | 4 | `make name` | POI-based human names for missing clusters |
@@ -75,6 +78,8 @@ make country URL=https://download.geofabrik.de/asia/thailand-latest.osm.pbf
 | All | `make pipeline` | `gpx`, `city`, then 1→5 |
 
 ## Output Structure
+
+`$CLUSTERS_DIR` (default `~/Documents/data/gpx-osm-missing-paths/clusters`):
 
 ```
 clusters/
@@ -101,6 +106,13 @@ Open the `.osm` in JOSM, load the GPX files from the subfolder, and you have per
   author's private dotfiles helper if present, otherwise prints the Geofabrik URL and path to
   download it to yourself
 
+## Data Location
+
+All generated pipeline data — `GPX_DIR`, `OUTPUT_DIR`, `CLUSTERS_DIR`, and the generated city
+OSM clip — defaults to `~/Documents/data/gpx-osm-missing-paths/{gpx,output,clusters,osm}`,
+outside the repo. Override any of these in `.env`. Committed city boundary polys
+(`osm/*.poly`) stay in-repo.
+
 ## Tuning for Your City / Data
 
 Edit `.env`:
@@ -115,7 +127,7 @@ See `docs/usage.md` for full parameter reference and recommended values for HCMC
 
 ## Advanced / Optional
 
-- **Incremental runs**: The pipeline is designed to be re-runnable. Add new GPX files to `gpx/` and re-run `make pipeline`. (Full reprocess is fast enough for personal collections of a few thousand files.)
+- **Incremental runs**: The pipeline is designed to be re-runnable. Add new GPX files to `$GPX_DIR` and re-run `make pipeline`. (Full reprocess is fast enough for personal collections of a few thousand files.)
 
 ## Contributing & Philosophy
 

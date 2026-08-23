@@ -6,12 +6,12 @@
 ~/.cache/osm/<country>-latest.osm.pbf     (dotfiles fetch-osm / launchd)
    │
    ▼ make city  (osmium extract --polygon=osm/<city>.poly)
-osm/<city>.osm.pbf                        (default: osm/hcm.osm.pbf)
+$OSM_DIR/<city>.osm.pbf                   (default: ~/Documents/data/gpx-osm-missing-paths/osm/hcm.osm.pbf)
    │
 ~/Documents/data/[private]                 (github.com/evgeniyarbatov/[private], git clone/pull)
    │
    ▼ make gpx  (gpx_fetcher.py — parquet tracks → .gpx, optional lat/lon/radius filter)
-gpx/*.gpx
+$GPX_DIR/*.gpx
    │
    ▼ gpx_processor.py
 cleaned GPXSegment objects (LineString + metadata)
@@ -26,12 +26,16 @@ missing clusters only (is_missing, osm_coverage_fraction)
 named Cluster objects (human_name, slug, nearby_pois)
    │
    ▼ osm_extractor.py
-clusters/{slug}/
+$CLUSTERS_DIR/{slug}/
    ├── {slug}.osm          (osmium extract, 50m buffer from city PBF)
    ├── cluster_meta.json   (num_gpx_traces, avg_length_m, …)
    ├── representative.geojson
    └── gpx/ (copies of relevant raw files)
 ```
+
+`$OSM_DIR`, `$GPX_DIR`, `$OUTPUT_DIR`, `$CLUSTERS_DIR` all default under
+`~/Documents/data/gpx-osm-missing-paths/`, outside the repo (see `docs/usage.md`). Only the
+committed city boundary poly (`osm/*.poly`) stays in-repo.
 
 ## OSM source (shared cache — no project-local download)
 
@@ -40,10 +44,10 @@ Country PBFs are **not** owned by this repo. They live under `~/.cache/osm`, ref
 | Layer | How | Path |
 |-------|-----|------|
 | Country | `make country` → `dotfiles/make/osm-country.mk` if present, else manual-download error | `$(OSM_CACHE_DIR)/vietnam-latest.osm.pbf` |
-| City | `make city` → `osmium extract --polygon=$(BOUNDARY_POLYGON)` | `osm/hcm.osm.pbf` (default) |
-| Per-cluster | `osmium extract --bbox` | `clusters/{slug}/{slug}.osm` |
+| City | `make city` → `osmium extract --polygon=$(BOUNDARY_POLYGON)` | `$OSM_DIR/hcm.osm.pbf` (default) |
+| Per-cluster | `osmium extract --bbox` | `$CLUSTERS_DIR/{slug}/{slug}.osm` |
 
-**Defaults:** Vietnam country extract + `osm/hcm.poly` (Ho Chi Minh City).
+**Defaults:** Vietnam country extract + `osm/hcm.poly` (Ho Chi Minh City); generated data under `~/Documents/data/gpx-osm-missing-paths/`.
 
 **Generic switch:**
 

@@ -1,9 +1,9 @@
-# Local data
+# Local data (default location is ~/Documents/data/gpx-osm-missing-paths/; these
+# entries are a safety net for anyone who overrides GPX_DIR/CLUSTERS_DIR/OUTPUT_DIR back in-repo)
 gpx/*
 !gpx/.gitkeep
 clusters/
 output/
-data/processed/
 .env
 
 # City OSM extracts (country PBF lives in ~/.cache/osm via dotfiles fetch-osm)
