@@ -5,14 +5,14 @@
 URL = https://download.geofabrik.de/asia/vietnam-latest.osm.pbf
 include $(HOME)/gitRepo/dotfiles/make/osm-country.mk
 
-# City scope: any osmconvert .poly under osm/ (or absolute path). Default: HCMC.
+# City scope: any osmium-compatible .poly under osm/ (or absolute path). Default: HCMC.
 OSM_DIR = osm
 BOUNDARY_POLYGON ?= osm/hcm.poly
 CITY := $(basename $(notdir $(BOUNDARY_POLYGON)))
 CITY_OSM_PBF := $(OSM_DIR)/$(CITY).osm.pbf
 CITY_OSM := $(OSM_DIR)/$(CITY).osm
 
-.PHONY: help setup install country city osm-check \
+.PHONY: help setup install deps country city osm-check \
 	gpx process cluster filter-missing name extract pipeline \
 	clean test lint
 
@@ -42,15 +42,14 @@ install: ## Install/update deps only
 
 country: osm-country-fetch ## Ensure country PBF in ~/.cache/osm (weekly launchd also refreshes)
 
-city: ## Clip country PBF to BOUNDARY_POLYGON → osm/<city>.osm.pbf (+ .osm)
+deps: ## Install osmium-tool via Homebrew if missing (macOS)
+	@command -v osmium >/dev/null || NONINTERACTIVE=1 brew install osmium-tool
+
+city: deps ## Clip country PBF to BOUNDARY_POLYGON → osm/<city>.osm.pbf (+ .osm)
 	@test -f "$(BOUNDARY_POLYGON)" || (echo "Missing poly: $(BOUNDARY_POLYGON)" >&2; exit 1)
 	@test -f "$(COUNTRY_OSM_PATH)" || (echo "Missing country PBF: $(COUNTRY_OSM_PATH). Run: make country (or wait for launchd com.arbatov.fetch-osm)" >&2; exit 1)
 	@mkdir -p "$(OSM_DIR)"
-	osmconvert "$(COUNTRY_OSM_PATH)" \
-		-B=$(BOUNDARY_POLYGON) \
-		--complete-ways \
-		--complete-multipolygons \
-		-o=$(CITY_OSM_PBF)
+	osmium extract --polygon="$(BOUNDARY_POLYGON)" --overwrite -o "$(CITY_OSM_PBF)" "$(COUNTRY_OSM_PATH)"
 	osmium cat --overwrite "$(CITY_OSM_PBF)" -o "$(CITY_OSM)"
 	@echo "✅ City extract: $(CITY_OSM_PBF) (from $(BOUNDARY_POLYGON))"
 

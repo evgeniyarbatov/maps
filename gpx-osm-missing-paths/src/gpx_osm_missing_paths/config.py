@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     Country PBF is **not** downloaded by this project. It is expected under
     ``OSM_CACHE_DIR`` (default ``~/.cache/osm``), populated by dotfiles
     ``fetch-osm`` / launchd ``com.arbatov.fetch-osm``. City scope is a local
-    ``osmconvert`` clip of that PBF with ``BOUNDARY_POLYGON`` (default
+    ``osmium extract`` clip of that PBF with ``BOUNDARY_POLYGON`` (default
     ``osm/hcm.poly``). Switch country via ``OSM_URL`` / ``OSM_COUNTRY_FILE``
     and city via ``BOUNDARY_POLYGON`` (any osmconvert ``.poly``).
     """

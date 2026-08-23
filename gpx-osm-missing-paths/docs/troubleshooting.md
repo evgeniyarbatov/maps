@@ -11,11 +11,11 @@
 - Run `gpx-osm osm-paths` to see exactly which of the three candidates resolved and whether
   each file exists on disk.
 
-## `osmium: command not found` / `osmconvert: command not found`
+## `osmium: command not found`
 
-Install via Homebrew: `brew install osmium-tool osmctools`. These are required host tools;
-there is no pure-Python fallback (per project philosophy: pragmatic and local-first, not
-another dependency to vendor).
+`make city` installs `osmium-tool` via Homebrew automatically (`make deps`). Manually:
+`brew install osmium-tool`. It's a required host tool; there is no pure-Python fallback
+(per project philosophy: pragmatic and local-first, not another dependency to vendor).
 
 ## GPX file fails to parse
 

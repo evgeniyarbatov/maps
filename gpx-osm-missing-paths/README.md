@@ -92,9 +92,9 @@ Open the `.osm` in JOSM, load the GPX files from the subfolder, and you have per
 
 - Python 3.12+
 - `uv` (strongly preferred)
-- `osmium-tool` and `osmconvert` (city clip + per-cluster extracts)
-  - macOS: `brew install osmium-tool osmctools` (or equivalent providing `osmconvert`)
-  - Ubuntu/Debian: `apt install osmium-tool osmctools`
+- `osmium-tool` (city clip + per-cluster extracts); `make city` installs it via Homebrew if missing
+  - macOS: `brew install osmium-tool`
+  - Ubuntu/Debian: `apt install osmium-tool`
 - Shared country OSM cache from **dotfiles** (`com.arbatov.fetch-osm` → `~/.cache/osm/…`)
 
 ## Tuning for Your City / Data

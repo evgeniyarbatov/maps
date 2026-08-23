@@ -5,7 +5,7 @@
 ```
 ~/.cache/osm/<country>-latest.osm.pbf     (dotfiles fetch-osm / launchd)
    │
-   ▼ make city  (osmconvert -B=osm/<city>.poly)
+   ▼ make city  (osmium extract --polygon=osm/<city>.poly)
 osm/<city>.osm.pbf                        (default: osm/hcm.osm.pbf)
    │
 ~/Documents/data/[private]                 (github.com/evgeniyarbatov/[private], git clone/pull)
@@ -40,7 +40,7 @@ Country PBFs are **not** owned by this repo. They live under `~/.cache/osm`, ref
 | Layer | How | Path |
 |-------|-----|------|
 | Country | `make country` → `dotfiles/make/osm-country.mk` | `$(OSM_CACHE_DIR)/vietnam-latest.osm.pbf` |
-| City | `make city` → `osmconvert -B=$(BOUNDARY_POLYGON)` | `osm/hcm.osm.pbf` (default) |
+| City | `make city` → `osmium extract --polygon=$(BOUNDARY_POLYGON)` | `osm/hcm.osm.pbf` (default) |
 | Per-cluster | `osmium extract --bbox` | `clusters/{slug}/{slug}.osm` |
 
 **Defaults:** Vietnam country extract + `osm/hcm.poly` (Ho Chi Minh City).
@@ -133,7 +133,7 @@ One-time export of named features from city PBF → `output/pois.*`. Rank by dis
 | CLI | Typer + Rich | Type-safe, pleasant |
 | Geospatial | geopandas + shapely | Mature ecosystem |
 | Country OSM | dotfiles `fetch-osm` + `~/.cache/osm` | One shared refresh for all personal OSM tools |
-| City scope | `osmconvert` + `.poly` | Same pattern as [private] / [private] |
+| City scope | osmium-tool `extract` + `.poly` | Single host tool, no unpackaged binary |
 | Local clips / tags | osmium-tool | Fast, standard |
 | Config | pydantic-settings + .env | Validated knobs |
 
