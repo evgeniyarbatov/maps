@@ -1,0 +1,1 @@
+- No CI despite having a `tests/` suite, and this repo is public — a broken pipeline here is more visible than in a private repo.
