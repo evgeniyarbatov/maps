@@ -1,12 +1,19 @@
 # Roadmap
 
-Turns personal running/walking GPX traces into JOSM-ready OpenStreetMap contributions: clusters repeated traces of the same physical path, names them from nearby landmarks, and exports focused `.osm` extracts.
+## Why keep going
 
-## Shipped
+This turns a personal irritation (running the same unmapped shortcut a dozen times) into an actual, lasting contribution to OpenStreetMap — a public good that outlives the repo itself. It's one of the few projects in this portfolio whose output leaves your own machine and becomes part of a shared map everyone uses.
 
-Full GPX-to-JOSM pipeline, multi-trace clustering, shared OSM cache reuse, prepared and released as a public repo, `make run` entry point, ruff/mypy --strict pass.
+## What it opens up
 
-## Next
+There's no documented merge success rate yet — how many exported `.osm` extracts actually got accepted into OSM. Once that's tracked, the real question becomes whether the naming/clustering heuristics generalize beyond Saigon/Hanoi to any city with a local OSM extract, turning this from "my personal mapping workflow" into a genuinely reusable OSM-contribution tool other runners could use in their own cities.
 
-- CI on the existing test suite (see TODO.md) — worth prioritizing since the repo is public.
-- No documented success rate yet (how many exported extracts actually got merged into OSM) — would be useful feedback on whether the naming/clustering heuristics are good enough.
+## Capability this builds
+
+Converting personal GPS exhaust into structured, landmark-named, reviewable map contributions — a specific, valuable skill (OSM data quality work) that most casual mappers never develop because the tooling friction is usually too high.
+
+## Connects to
+
+- **[private]** — the JOSM-side counterpart; the extracts this repo produces are made to be opened there.
+- **[private]**, **[private]**, **singapore-streets** — same OSM-analysis family, applied to existing map data rather than contributing new geometry; worth cross-referencing findings.
+- **[private]** — upstream source of the raw traces this pipeline clusters.
