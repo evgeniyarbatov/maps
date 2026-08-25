@@ -1,12 +1,17 @@
 # Roadmap
 
-Estimates the real-world width of an OSM way by comparing it against many GPS polylines that cross it (currently Strava running activities), using perpendicular offset distributions with outlier filtering.
+## Why keep going
 
-## Where this stands
+OSM almost never records how wide a way actually is — this repo answers that from data that already exists for free: the scatter of GPS traces that have crossed it. The estimate-vs-actual example (11 m estimated vs 13 m actual on one way) shows the method basically works. That's a small, contained proof that "crowd GPS noise contains real geometric signal," which is a more general finding than the single width number.
 
-Ships with a working example (Times City boundary + polylines) and produces both an aggregate width and 10 m-segment widths with plots.
+## What it opens up
 
-## Next
+Right now this measures one hand-picked way per run. The real value shows up once it can sweep a whole area's ways in one pass and produce a `way_id → width_m` table instead of a single result — because that table is the missing input for another project in this account (see below) that currently has no width data for most of its rows. Once that's wired up, the natural next question is whether width estimation is good enough on a *single* well-covered way to extend to lightly-covered ones, or whether the confidence interval collapses too fast.
 
-- Feed estimated `width_m` back into `[private]`, which needs exactly this to compute its `λ / w` and `R / w` ratios for OSM ways that currently have no width data.
-- Extend beyond a single hand-picked way per run to cover a whole area's ways in one pass.
+## Capability this builds
+
+Reading structured signal out of noisy, uncurated GPS data — the same underlying skill (perpendicular offset, MAD-based outlier filtering, percentile aggregation) applies anywhere consumer location data needs to be trusted more than its raw precision suggests.
+
+## Connects to
+
+**[private]** — explicitly lists "most rows have no `width_m`" as an open gap; this repo's per-way width output is the direct fix, not a hypothetical. **[private]** — same width-from-Strava-polylines idea in a different city; worth comparing methods before maintaining two independent implementations. **[private]** — the boundary-clip step this repo started from.
