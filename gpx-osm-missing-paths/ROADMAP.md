@@ -14,6 +14,4 @@ Converting personal GPS exhaust into structured, landmark-named, reviewable map 
 
 ## Connects to
 
-- **[private]** — the JOSM-side counterpart; the extracts this repo produces are made to be opened there.
-- **[private]**, **[private]**, **singapore-streets** — same OSM-analysis family, applied to existing map data rather than contributing new geometry; worth cross-referencing findings.
-- **[private]** — upstream source of the raw traces this pipeline clusters.
+- **singapore-streets** — same OSM-analysis family, applied to existing map data rather than contributing new geometry; worth cross-referencing findings.
