@@ -12,6 +12,3 @@ Right now this measures one hand-picked way per run. The real value shows up onc
 
 Reading structured signal out of noisy, uncurated GPS data — the same underlying skill (perpendicular offset, MAD-based outlier filtering, percentile aggregation) applies anywhere consumer location data needs to be trusted more than its raw precision suggests.
 
-## Connects to
-
-**[private]** — explicitly lists "most rows have no `width_m`" as an open gap; this repo's per-way width output is the direct fix, not a hypothetical. **[private]** — same width-from-Strava-polylines idea in a different city; worth comparing methods before maintaining two independent implementations. **[private]** — the boundary-clip step this repo started from.
