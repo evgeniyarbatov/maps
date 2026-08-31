@@ -62,7 +62,7 @@ install: ## Install/update deps only
 country: osm-country-fetch ## Ensure country PBF in ~/.cache/osm (weekly launchd also refreshes)
 
 deps: ## Install osmium-tool via Homebrew if missing (macOS)
-	@command -v osmium >/dev/null || NONINTERACTIVE=1 brew install osmium-tool
+	@command -v osmium >/dev/null || NONINTERACTIVE=1 brew install --yes osmium-tool
 
 city: deps ## Clip country PBF to BOUNDARY_POLYGON → osm/<city>.osm.pbf (+ .osm)
 	@test -f "$(BOUNDARY_POLYGON)" || (echo "Missing poly: $(BOUNDARY_POLYGON)" >&2; exit 1)
