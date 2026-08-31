@@ -6,7 +6,7 @@ All commands run via `uv run gpx-osm <command>`, or the matching `make <target>`
 
 | Command | Make target | Description |
 |---------|-------------|-------------|
-| `gpx-osm fetch-gpx` | `make gpx` | Checkout/update `[private]`, convert its parquet tracks into `GPX_DIR` |
+| `gpx-osm fetch-gpx` | `make gpx` | Checkout/update the parquet track repo, convert its tracks into `GPX_DIR` |
 | `gpx-osm process` | `make process` | Parse/clean every GPX under `GPX_DIR` → `$OUTPUT_DIR/segments.{geojson,parquet}` |
 | `gpx-osm cluster` | `make cluster` | Group overlapping segments → `$OUTPUT_DIR/clusters_raw.geojson` |
 | `gpx-osm filter-missing` | `make filter-missing` | Keep clusters poorly covered by OSM → `$OUTPUT_DIR/clusters_missing.geojson` |
@@ -50,8 +50,8 @@ boundary poly (`BOUNDARY_POLYGON`, see above) stays in-repo under `osm/`.
 
 | Variable | Default | Meaning |
 |----------|---------|---------|
-| `GPX_DATA_REPO_URL` | `https://github.com/evgeniyarbatov/[private].git` | Repo of per-city GeoParquet track exports |
-| `GPX_DATA_ROOT` | `~/Documents/data` | Checkout lives at `GPX_DATA_ROOT/[private]` (outside the project dir) |
+| `GPX_DATA_REPO_URL` | (personal parquet track repo URL) | Repo of per-city GeoParquet track exports |
+| `GPX_DATA_ROOT` | `~/Documents/data` | Checkout lives at `GPX_DATA_ROOT/gpx-data` (outside the project dir) |
 
 ### Clustering & naming knobs
 
@@ -71,20 +71,20 @@ boundary poly (`BOUNDARY_POLYGON`, see above) stays in-repo under `osm/`.
 | `EXISTING_PATH_MATCH_BUFFER_M` | 12 | Buffer used when computing OSM coverage |
 | `MISSING_COVERAGE_THRESHOLD` | 0.45 | Below this fraction covered → cluster is a missing-path candidate |
 
-## Fetching GPX from `[private]`
+## Fetching GPX from the parquet track repo
 
-[`[private]`](https://github.com/evgeniyarbatov/[private]) is a personal export repo of Strava/
-Android/Casio activity history, pre-simplified into per-city GeoParquet files (one row per
-track, no per-point time/elevation). `make gpx` clones/pulls it into `GPX_DATA_ROOT/[private]`
-and writes one `.gpx` file per track into `GPX_DIR`:
+`GPX_DATA_REPO_URL` points at a personal export repo of Strava/Android/Casio activity history,
+pre-simplified into per-city GeoParquet files (one row per track, no per-point time/elevation).
+`make gpx` clones/pulls it into `GPX_DATA_ROOT/gpx-data` and writes one `.gpx` file per track
+into `GPX_DIR`:
 
 ```bash
-make gpx                                        # every track in [private]
+make gpx                                        # every track in the repo
 make gpx LAT=10.7940 LON=106.7217 RADIUS_KM=5    # only tracks passing within 5km of a point
 make pipeline LAT=10.7940 LON=106.7217 RADIUS_KM=5  # same filter, then the full pipeline
 ```
 
-`[private]` spans many cities/countries the mapper has run in; LAT/LON/RADIUS_KM keeps only
+The repo spans many cities/countries the mapper has run in; LAT/LON/RADIUS_KM keeps only
 tracks relevant to the city currently being mapped (all three must be given together, or
 omitted together for no filter). `make pipeline` always runs `gpx` first.
 

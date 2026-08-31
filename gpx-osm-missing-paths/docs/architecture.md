@@ -8,7 +8,7 @@
    ▼ make city  (osmium extract --polygon=osm/<city>.poly)
 $OSM_DIR/<city>.osm.pbf                   (default: ~/Documents/data/gpx-osm-missing-paths/osm/hcm.osm.pbf)
    │
-~/Documents/data/[private]                 (github.com/evgeniyarbatov/[private], git clone/pull)
+~/Documents/data/gpx-data                 (repo of per-city GeoParquet track exports, git clone/pull)
    │
    ▼ make gpx  (gpx_fetcher.py — parquet tracks → .gpx, optional lat/lon/radius filter)
 $GPX_DIR/*.gpx
@@ -63,12 +63,11 @@ make country URL=https://download.geofabrik.de/asia/thailand-latest.osm.pbf
 
 Python resolution: `Settings.resolve_osm_pbf()` prefers `OSM_PBF_PATH`, then city clip, then country cache (`src/gpx_osm_missing_paths/config.py`).
 
-## GPX source (`[private]`, personal export repo)
+## GPX source (parquet track export repo)
 
-Raw GPX comes from [`github.com/evgeniyarbatov/[private]`](https://github.com/evgeniyarbatov/[private]),
-the author's private Strava/Android/Casio activity export repo, pre-simplified (RDP 10m) into one GeoParquet
-file per city under `data/parquet/<source>/<city>.parquet` (columns: `name`, `geometry`
-LineString EPSG:4326, `city`). It is **not** GPX-specific to this project — it spans every
+Raw GPX comes from a personal Strava/Android/Casio activity export repo, pre-simplified (RDP 10m)
+into one GeoParquet file per city under `data/parquet/<source>/<city>.parquet` (columns: `name`,
+`geometry` LineString EPSG:4326, `city`). It is **not** GPX-specific to this project — it spans every
 city the mapper has run in — so `make gpx` (`gpx-osm fetch-gpx`, `gpx_fetcher.py`) accepts an
 optional `--lat/--lon/--radius-km` filter to keep only tracks passing within that radius before
 writing them out as individual `.gpx` files (coordinates only — the parquet export carries no
@@ -76,7 +75,7 @@ per-point time/elevation).
 
 | Layer | How | Path |
 |-------|-----|------|
-| Checkout | `git clone`/`pull` (`gpx_fetcher.checkout_gpx_data_repo`) | `GPX_DATA_ROOT/[private]` (default `~/Documents/data/[private]`) |
+| Checkout | `git clone`/`pull` (`gpx_fetcher.checkout_gpx_data_repo`) | `GPX_DATA_ROOT/gpx-data` (default `~/Documents/data/gpx-data`) |
 | Per-track GPX | one file per parquet row, optional radius filter | `GPX_DIR/*.gpx` |
 
 The checkout lives outside the project directory (personal data, not project data) and is
@@ -86,7 +85,7 @@ the shared OSM country cache under `~/.cache/osm`.
 ## Core Components
 
 ### 1. GPX Fetching (`gpx_fetcher.py`)
-Checkout/update the `[private]` repo; convert its per-city parquet tracks into `GPX_DIR/*.gpx`,
+Checkout/update the parquet track repo; convert its per-city parquet tracks into `GPX_DIR/*.gpx`,
 optionally filtered to those passing within `--radius-km` of `--lat/--lon`.
 
 ### 2. Models (`models.py`)

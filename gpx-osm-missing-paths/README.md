@@ -37,8 +37,8 @@ make country
 make city             # clip to osm/hcm.poly → ~/Documents/data/gpx-osm-missing-paths/osm/hcm.osm.pbf
 
 # 4. GPX input: either drop raw .gpx into ~/Documents/data/gpx-osm-missing-paths/gpx/
-# yourself, or fetch from github.com/evgeniyarbatov/[private] (the author's private
-# export repo, checked out to ~/Documents/data/[private]) — most users will just drop files in
+# yourself, or fetch from a repo of per-city GeoParquet track exports (checked out
+# to ~/Documents/data/gpx-data) — most users will just drop files in
 make gpx LAT=10.7940 LON=106.7217 RADIUS_KM=5   # optional filter; omit for everything
 
 # 5. Full pipeline (fetch GPX + city clip + process + cluster + missing filter + name + extract)
@@ -69,7 +69,7 @@ make country URL=https://download.geofabrik.de/asia/thailand-latest.osm.pbf
 |------|---------|--------------|
 | 0a | `make country` | Ensure country PBF in `~/.cache/osm` — via the author's private dotfiles helper if present, else prints manual download instructions |
 | 0b | `make city` | Clip country PBF with `BOUNDARY_POLYGON` (default `osm/hcm.poly`) → `$OSM_DIR/<city>.osm.pbf` |
-| 0c | `make gpx` | Checkout/update `[private]`, convert its parquet tracks → `$GPX_DIR/*.gpx` (optional `LAT`/`LON`/`RADIUS_KM` filter) |
+| 0c | `make gpx` | Checkout/update the parquet track repo, convert its tracks → `$GPX_DIR/*.gpx` (optional `LAT`/`LON`/`RADIUS_KM` filter) |
 | 1 | `make process` | Parse every GPX, clean, simplify → `$OUTPUT_DIR/segments.*` |
 | 2 | `make cluster` | Cluster overlapping segments → representative lines |
 | 3 | `make filter-missing` | Keep only clusters poorly covered by OSM ways |

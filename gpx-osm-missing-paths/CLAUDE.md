@@ -43,7 +43,7 @@ This file contains project-specific rules and context. **Always follow these whe
 ## Key Files & Their Responsibilities
 - `src/gpx_osm_missing_paths/models.py` — Single source of truth for `GPXSegment`, `Cluster`, `POI`.
 - `config.py` — Loads `.env` + defaults into Pydantic `Settings` (shared OSM cache, city poly, clustering knobs).
-- `gpx_fetcher.py` — Checkout `[private]` repo + convert its parquet tracks into `GPX_DIR/*.gpx` (writes raw GPX XML directly, no `gpxpy`, so `gpx_processor.py` stays the only `gpxpy` touchpoint).
+- `gpx_fetcher.py` — Checkout the parquet track repo + convert its parquet tracks into `GPX_DIR/*.gpx` (writes raw GPX XML directly, no `gpxpy`, so `gpx_processor.py` stays the only `gpxpy` touchpoint).
 - `gpx_processor.py` — The only place that touches `gpxpy`. Produces clean segments.
 - `clusterer.py` — Documented clustering heuristic. Algorithm changes → update comment + architecture doc.
 - `missing_filter.py` — Coverage vs OSM ways; product gate for which clusters get bundles.
