@@ -1,4 +1,4 @@
-"""Fetches raw GPX tracks from the evgeniyarbatov/[private] GeoParquet export into GPX_DIR."""
+"""Fetches raw GPX tracks from the evgeniyarbatov/gpx-data GeoParquet export into GPX_DIR."""
 
 from __future__ import annotations
 
@@ -48,7 +48,7 @@ def _within_radius(line: LineString, lat: float, lon: float, radius_km: float) -
 def _write_gpx(path: Path, name: str, line: LineString) -> None:
     """Write a minimal single-track GPX 1.1 file.
 
-    [private]'s parquet tracks are already-simplified LineStrings with no per-point
+    gpx-data's parquet tracks are already-simplified LineStrings with no per-point
     elevation or timestamp, so this writes coordinates only — gpx_processor.py (the
     only other place that touches GPX I/O) tolerates missing time/elevation already.
     """
@@ -80,7 +80,7 @@ def fetch_gpx_from_dir(
     """Convert every track in ``repo_dir/data/parquet/**/*.parquet`` into a ``.gpx`` file.
 
     When ``lat``/``lon``/``radius_km`` are all given, only tracks passing within
-    ``radius_km`` of the point are written — ``[private]`` spans many cities/countries
+    ``radius_km`` of the point are written — ``gpx-data`` spans many cities/countries
     and most of it is irrelevant to any one mapping session.
     """
     parquet_files = sorted((repo_dir / "data" / "parquet").rglob("*.parquet"))
@@ -117,6 +117,6 @@ def fetch_gpx(
     lon: float | None = None,
     radius_km: float | None = None,
 ) -> FetchGpxSummary:
-    """Checkout/update ``[private]`` and convert its parquet tracks into ``GPX_DIR``."""
+    """Checkout/update ``gpx-data`` and convert its parquet tracks into ``GPX_DIR``."""
     repo_dir = checkout_gpx_data_repo(settings)
     return fetch_gpx_from_dir(settings, repo_dir, lat, lon, radius_km)

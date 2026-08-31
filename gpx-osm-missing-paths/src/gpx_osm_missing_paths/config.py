@@ -48,10 +48,10 @@ class Settings(BaseSettings):
     clusters_dir: Path = Field(default=Path("~/Documents/data/gpx-osm-missing-paths/clusters"))
     output_dir: Path = Field(default=Path("~/Documents/data/gpx-osm-missing-paths/output"))
 
-    # Raw GPX source: github.com/evgeniyarbatov/[private], per-city GeoParquet exports.
+    # Raw GPX source: github.com/evgeniyarbatov/gpx-data, per-city GeoParquet exports.
     # Checked out under GPX_DATA_ROOT/<repo name> — kept outside the project directory
     # since it's the mapper's personal activity history, not project data.
-    gpx_data_repo_url: str = Field(default="https://github.com/evgeniyarbatov/[private].git")
+    gpx_data_repo_url: str = Field(default="https://github.com/evgeniyarbatov/gpx-data.git")
     gpx_data_root: Path = Field(default=Path("~/Documents/data"))
 
     min_segment_length_m: float = 25.0
@@ -126,7 +126,7 @@ class Settings(BaseSettings):
 
     @property
     def gpx_data_repo_dir(self) -> Path:
-        """Local checkout of ``gpx_data_repo_url`` under ``gpx_data_root`` (default ``~/Documents/data/[private]``)."""
+        """Local checkout of ``gpx_data_repo_url`` under ``gpx_data_root`` (default ``~/Documents/data/gpx-data``)."""
         name = self.gpx_data_repo_url.rstrip("/").rsplit("/", 1)[-1]
         if name.endswith(".git"):
             name = name[: -len(".git")]

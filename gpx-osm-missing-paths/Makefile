@@ -35,7 +35,7 @@ CITY_OSM := $(OSM_DIR)/$(CITY).osm
 	gpx process cluster filter-missing name extract pipeline \
 	clean test lint
 
-# Raw GPX source: github.com/evgeniyarbatov/[private], per-city GeoParquet exports.
+# Raw GPX source: github.com/evgeniyarbatov/gpx-data, per-city GeoParquet exports.
 # Optional LAT/LON/RADIUS_KM narrows `make gpx` to tracks near one point.
 LAT ?= 10.787919410913423
 LON ?= 106.70594249757384
@@ -80,7 +80,7 @@ osm-check: ## Verify country cache + city extract exist
 
 # --- Pipeline (uses city PBF as OSM_PBF_PATH) ---
 
-gpx: ## Fetch GPX tracks from [private] (parquet) into GPX_DIR; optional LAT/LON/RADIUS_KM filter
+gpx: ## Fetch GPX tracks from gpx-data (parquet) into GPX_DIR; optional LAT/LON/RADIUS_KM filter
 	uv run gpx-osm fetch-gpx $(if $(LAT),--lat $(LAT)) $(if $(LON),--lon $(LON)) $(if $(RADIUS_KM),--radius-km $(RADIUS_KM))
 
 process: ## Parse/clean GPX → output/segments.*
