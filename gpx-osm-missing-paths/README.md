@@ -4,6 +4,8 @@
 
 **Turn your personal running/walking GPX traces into precise, JOSM-ready contributions to OpenStreetMap.**
 
+![Real output of `gpx-osm process` + `gpx-osm cluster` on the bundled samples/*.gpx](docs/clusters-demo.svg)
+
 Identify footpaths, alleys, stairways, and informal routes that are missing from OSM, cluster all your traces that cover the same physical path, automatically name them using nearby landmarks, and export tiny focused `.osm` extracts + the exact GPX files you need — all locally, with zero external API calls after setup.
 
 Perfect for runners, walkers, and mappers in places like Ho Chi Minh City (Saigon), Hanoi, or any city where you have a local OSM extract.

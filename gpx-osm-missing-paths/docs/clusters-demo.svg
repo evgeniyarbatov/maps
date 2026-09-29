@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="380" viewBox="0 0 900 380" font-family="sans-serif">
+<rect width="900" height="380" fill="#fff"/>
+<text x="450.0" y="18" font-size="13" text-anchor="middle">Real output of gpx-osm process + cluster on the bundled samples/*.gpx</text>
+<rect x="6" y="30" width="288" height="344" fill="none" stroke="#ccc"/>
+<text x="150.0" y="48" font-size="12" text-anchor="middle">cluster_0000</text><text x="150.0" y="64" font-size="11" fill="#555" text-anchor="middle">2 GPX traces → 1 cluster</text>
+<polyline points="86.9,185.6 212.4,187.5" fill="none" stroke="#000" stroke-opacity=".15" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+<polyline points="91.6,189.4 104.3,188.4 117.0,189.8 129.8,188.9 142.5,189.5 155.2,188.2 168.0,190.3 180.7,188.9 193.4,189.4 206.2,188.6" fill="none" stroke="#1f77b4" stroke-width="1.5"/>
+<circle cx="91.6" cy="189.4" r="2.2" fill="#1f77b4"/><circle cx="104.3" cy="188.4" r="2.2" fill="#1f77b4"/><circle cx="117.0" cy="189.8" r="2.2" fill="#1f77b4"/><circle cx="129.8" cy="188.9" r="2.2" fill="#1f77b4"/><circle cx="142.5" cy="189.5" r="2.2" fill="#1f77b4"/><circle cx="155.2" cy="188.2" r="2.2" fill="#1f77b4"/><circle cx="168.0" cy="190.3" r="2.2" fill="#1f77b4"/><circle cx="180.7" cy="188.9" r="2.2" fill="#1f77b4"/><circle cx="193.4" cy="189.4" r="2.2" fill="#1f77b4"/><circle cx="206.2" cy="188.6" r="2.2" fill="#1f77b4"/>
+<polyline points="86.9,185.6 105.5,187.0 124.1,186.1 142.7,187.5 161.3,185.8 179.9,187.0 198.5,186.3 212.4,187.5" fill="none" stroke="#ff7f0e" stroke-width="1.5"/>
+<circle cx="86.9" cy="185.6" r="2.2" fill="#ff7f0e"/><circle cx="105.5" cy="187.0" r="2.2" fill="#ff7f0e"/><circle cx="124.1" cy="186.1" r="2.2" fill="#ff7f0e"/><circle cx="142.7" cy="187.5" r="2.2" fill="#ff7f0e"/><circle cx="161.3" cy="185.8" r="2.2" fill="#ff7f0e"/><circle cx="179.9" cy="187.0" r="2.2" fill="#ff7f0e"/><circle cx="198.5" cy="186.3" r="2.2" fill="#ff7f0e"/><circle cx="212.4" cy="187.5" r="2.2" fill="#ff7f0e"/>
+<line x1="16" y1="312" x2="32" y2="312" stroke="#1f77b4" stroke-width="2"/><text x="36" y="316" font-size="10">sample_alley_01.gpx</text>
+<line x1="16" y1="326" x2="32" y2="326" stroke="#ff7f0e" stroke-width="2"/><text x="36" y="330" font-size="10">sample_alley_02.gpx</text>
+<line x1="16" y1="340" x2="32" y2="340" stroke="#000" stroke-opacity=".15" stroke-width="8"/><text x="36" y="344" font-size="10">cluster representative line</text>
+<line x1="230" y1="360" x2="272.5" y2="360" stroke="#333" stroke-width="2"/><text x="251.25" y="355" font-size="10" text-anchor="middle">50 m</text>
+<rect x="306" y="30" width="288" height="344" fill="none" stroke="#ccc"/>
+<text x="450.0" y="48" font-size="12" text-anchor="middle">cluster_0001</text><text x="450.0" y="64" font-size="11" fill="#555" text-anchor="middle">1 GPX trace → 1 cluster</text>
+<polyline points="443.3,281.0 450.7,230.3 447.0,213.4 452.6,196.5 448.8,179.5 455.3,95.0" fill="none" stroke="#000" stroke-opacity=".15" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+<polyline points="443.3,281.0 447.9,264.1 445.1,247.2 450.7,230.3 447.0,213.4 452.6,196.5 448.8,179.5 453.5,162.6 449.8,145.7 454.4,128.8 451.6,111.9 455.3,95.0" fill="none" stroke="#2ca02c" stroke-width="1.5"/>
+<circle cx="443.3" cy="281.0" r="2.2" fill="#2ca02c"/><circle cx="447.9" cy="264.1" r="2.2" fill="#2ca02c"/><circle cx="445.1" cy="247.2" r="2.2" fill="#2ca02c"/><circle cx="450.7" cy="230.3" r="2.2" fill="#2ca02c"/><circle cx="447.0" cy="213.4" r="2.2" fill="#2ca02c"/><circle cx="452.6" cy="196.5" r="2.2" fill="#2ca02c"/><circle cx="448.8" cy="179.5" r="2.2" fill="#2ca02c"/><circle cx="453.5" cy="162.6" r="2.2" fill="#2ca02c"/><circle cx="449.8" cy="145.7" r="2.2" fill="#2ca02c"/><circle cx="454.4" cy="128.8" r="2.2" fill="#2ca02c"/><circle cx="451.6" cy="111.9" r="2.2" fill="#2ca02c"/><circle cx="455.3" cy="95.0" r="2.2" fill="#2ca02c"/>
+<line x1="316" y1="326" x2="332" y2="326" stroke="#2ca02c" stroke-width="2"/><text x="336" y="330" font-size="10">sample_distinct_path.gpx</text>
+<line x1="316" y1="340" x2="332" y2="340" stroke="#000" stroke-opacity=".15" stroke-width="8"/><text x="336" y="344" font-size="10">cluster representative line</text>
+<line x1="530" y1="360" x2="572.5" y2="360" stroke="#333" stroke-width="2"/><text x="551.25" y="355" font-size="10" text-anchor="middle">50 m</text>
+<rect x="606" y="30" width="288" height="344" fill="none" stroke="#ccc"/>
+<text x="750.0" y="48" font-size="12" text-anchor="middle">cluster_0002, cluster_0003</text><text x="750.0" y="64" font-size="11" fill="#555" text-anchor="middle">1 GPX, split into 2 segments</text>
+<polyline points="709.3,210.3 720.5,182.1 737.2,158.6 760.5,144.5 783.7,149.2 797.6,172.7" fill="none" stroke="#000" stroke-opacity=".15" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+<polyline points="797.6,172.7 781.8,196.2 760.5,215.0 732.6,224.4 709.3,219.7 709.3,210.3" fill="none" stroke="#000" stroke-opacity=".15" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+<polyline points="709.3,210.3 720.5,182.1 737.2,158.6 760.5,144.5 783.7,149.2 797.6,172.7 797.6,172.7 781.8,196.2 760.5,215.0 732.6,224.4 709.3,219.7 709.3,210.3" fill="none" stroke="#d62728" stroke-width="1.5"/>
+<circle cx="709.3" cy="210.3" r="2.2" fill="#d62728"/><circle cx="720.5" cy="182.1" r="2.2" fill="#d62728"/><circle cx="737.2" cy="158.6" r="2.2" fill="#d62728"/><circle cx="760.5" cy="144.5" r="2.2" fill="#d62728"/><circle cx="783.7" cy="149.2" r="2.2" fill="#d62728"/><circle cx="797.6" cy="172.7" r="2.2" fill="#d62728"/><circle cx="797.6" cy="172.7" r="2.2" fill="#d62728"/><circle cx="781.8" cy="196.2" r="2.2" fill="#d62728"/><circle cx="760.5" cy="215.0" r="2.2" fill="#d62728"/><circle cx="732.6" cy="224.4" r="2.2" fill="#d62728"/><circle cx="709.3" cy="219.7" r="2.2" fill="#d62728"/><circle cx="709.3" cy="210.3" r="2.2" fill="#d62728"/>
+<line x1="616" y1="326" x2="632" y2="326" stroke="#d62728" stroke-width="2"/><text x="636" y="330" font-size="10">sample_run_park_loop.gpx</text>
+<line x1="616" y1="340" x2="632" y2="340" stroke="#000" stroke-opacity=".15" stroke-width="8"/><text x="636" y="344" font-size="10">cluster representative line</text>
+<line x1="830" y1="360" x2="872.5" y2="360" stroke="#333" stroke-width="2"/><text x="851.25" y="355" font-size="10" text-anchor="middle">50 m</text>
+</svg>
