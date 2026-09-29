@@ -1,5 +1,7 @@
 # gpx-osm-missing-paths
 
+[![tests](https://github.com/evgeniyarbatov/gpx-osm-missing-paths/actions/workflows/tests.yml/badge.svg)](https://github.com/evgeniyarbatov/gpx-osm-missing-paths/actions/workflows/tests.yml)
+
 **Turn your personal running/walking GPX traces into precise, JOSM-ready contributions to OpenStreetMap.**
 
 Identify footpaths, alleys, stairways, and informal routes that are missing from OSM, cluster all your traces that cover the same physical path, automatically name them using nearby landmarks, and export tiny focused `.osm` extracts + the exact GPX files you need — all locally, with zero external API calls after setup.
