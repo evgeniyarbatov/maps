@@ -1,5 +1,7 @@
 # gpx-courses
 
+[![tests](https://github.com/evgeniyarbatov/gpx-courses/actions/workflows/tests.yml/badge.svg)](https://github.com/evgeniyarbatov/gpx-courses/actions/workflows/tests.yml)
+
 Build a clean course GPX from raw activity traces by:
 1. simplifying source GPX files,
 2. clipping local OSM to the activity area,
