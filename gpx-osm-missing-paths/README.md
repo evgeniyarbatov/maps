@@ -43,7 +43,7 @@ make city             # clip to osm/hcm.poly → ~/Documents/data/gpx-osm-missin
 # 4. GPX input: either drop raw .gpx into ~/Documents/data/gpx-osm-missing-paths/gpx/
 # yourself, or fetch from a repo of per-city GeoParquet track exports (checked out
 # to ~/Documents/data/gpx-data) — most users will just drop files in
-make gpx LAT=10.7940 LON=106.7217 RADIUS_KM=5   # optional filter; omit for everything
+make gpx LAT=<lat> LON=<lon> RADIUS_KM=5   # optional filter; omit for everything
 
 # 5. Full pipeline (fetch GPX + city clip + process + cluster + missing filter + name + extract)
 make pipeline
