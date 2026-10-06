@@ -9,15 +9,16 @@ if _make_path is None:
 MAKE_PATH: str = _make_path
 
 TEST_DATA_ROOT = "/tmp/gpx-courses-test-data"
-TEST_DATA_DIR = f"{TEST_DATA_ROOT}/gpx-courses"
+REPO_ROOT = Path(__file__).resolve().parents[1]
+# The Makefile names DATA_DIR after the checkout directory, not the repo.
+TEST_DATA_DIR = f"{TEST_DATA_ROOT}/{REPO_ROOT.name}"
 
 
 class MakefileTests(unittest.TestCase):
     def _dry_run(self, *args: str) -> str:
-        repo_root = Path(__file__).resolve().parents[1]
         result = subprocess.run(  # noqa: S603
             [MAKE_PATH, "-n", *args, f"DATA_ROOT={TEST_DATA_ROOT}"],
-            cwd=repo_root,
+            cwd=REPO_ROOT,
             check=True,
             text=True,
             capture_output=True,
