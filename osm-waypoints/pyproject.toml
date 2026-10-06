@@ -35,6 +35,8 @@ ignore = ["E501", "B008", "S101"]
 "scripts/extract_pois.py" = ["S314"]
 "scripts/export_gpx.py" = ["S318"]
 "tests/test_extract_pois.py" = ["S314"]
+# Fixture path strings for env overrides; nothing is written to /tmp.
+"tests/test_config.py" = ["S108"]
 
 
 [tool.ruff.format]
