@@ -1,17 +1,37 @@
 # Roadmap
 
-## Why keep going
+Goal: surface more real missing ways from a personal GPX collection, with fewer false positives and less JOSM time per way.
 
-This turns a personal irritation (running the same unmapped shortcut a dozen times) into an actual, lasting contribution to OpenStreetMap — a public good that outlives the repo itself. It's one of the few projects in this portfolio whose output leaves your own machine and becomes part of a shared map everyone uses.
+## 1. Measure precision
 
-## What it opens up
+- Record each bundle's outcome (`mapped`, `already_mapped`, `not_a_path`, `skipped`) in a `reviewed.json` under `CLUSTERS_DIR`.
+- Print precision per run, and per knob setting, so `MISSING_COVERAGE_THRESHOLD` / `MIN_CLUSTER_TRACES` are tuned against data rather than intuition.
+- Skip already-reviewed clusters on later runs, matched by geometry rather than slug.
 
-There's no documented merge success rate yet — how many exported `.osm` extracts actually got accepted into OSM. Once that's tracked, the real question becomes whether the naming/clustering heuristics generalize beyond Saigon/Hanoi to any city with a local OSM extract, turning this from "my personal mapping workflow" into a genuinely reusable OSM-contribution tool other runners could use in their own cities.
+## 2. Sharper coverage check
 
-## Capability this builds
+- Compute coverage across all member traces, not only the representative line.
+- Count pedestrian areas (`highway=pedestrian` + `area=yes`, park footway areas) as mapped.
+- Use a separate, tighter buffer for `residential`/`unclassified` roads so footways running beside them aren't hidden.
+- Flag partial matches (a way exists but the cluster extends past its end) as "extend way" bundles instead of dropping them.
 
-Converting personal GPS exhaust into structured, landmark-named, reviewable map contributions — a specific, valuable skill (OSM data quality work) that most casual mappers never develop because the tooling friction is usually too high.
+## 3. Recall
 
-## Connects to
+- Merge adjacent chunks of one corridor into a single bundle instead of one per 750m chunk.
+- Add a lower-confidence tier for single-trace clusters with very low coverage, ranked below corroborated ones.
 
-- **singapore-streets** — same OSM-analysis family, applied to existing map data rather than contributing new geometry; worth cross-referencing findings.
+## 4. Scale to thousands of runs
+
+- Process GPX incrementally, cached by file hash, so a new run only reprocesses itself.
+- Rank bundles by traces × length and write one overview GeoJSON for triage before opening JOSM.
+- Bound memory on large collections by streaming segments per chunk of files.
+
+## 5. Better input signal
+
+- Use timestamps from raw GPX (the parquet exports have none) to drop driving/cycling segments by speed.
+- Derive the GPS sanity bbox from `BOUNDARY_POLYGON` instead of a hardcoded Vietnam box.
+
+## 6. Other cities
+
+- Run Hanoi end to end as the first non-HCMC city and record what breaks.
+- Commit `.poly` boundaries for other cities the GPX collection already covers.

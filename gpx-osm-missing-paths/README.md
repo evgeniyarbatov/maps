@@ -2,149 +2,54 @@
 
 [![tests](https://github.com/evgeniyarbatov/gpx-osm-missing-paths/actions/workflows/tests.yml/badge.svg)](https://github.com/evgeniyarbatov/gpx-osm-missing-paths/actions/workflows/tests.yml)
 
-**Turn your personal running/walking GPX traces into precise, JOSM-ready contributions to OpenStreetMap.**
+Find footpaths, alleys and shortcuts you keep running that are missing from OpenStreetMap, and get a JOSM-ready bundle for each one. Fully local after the OSM extract is cached.
 
 ![Real output of `gpx-osm process` + `gpx-osm cluster` on the bundled samples/*.gpx](docs/clusters-demo.svg)
 
-Identify footpaths, alleys, stairways, and informal routes that are missing from OSM, cluster all your traces that cover the same physical path, automatically name them using nearby landmarks, and export tiny focused `.osm` extracts + the exact GPX files you need — all locally, with zero external API calls after setup.
-
-Perfect for runners, walkers, and mappers in places like Ho Chi Minh City (Saigon), Hanoi, or any city where you have a local OSM extract.
-
-## Why This Exists
-
-You run the same new alley or park shortcut 12 times. Each GPX is slightly different due to GPS noise. Manually hunting through dozens of files in JOSM is painful. This pipeline:
-
-- Groups all traces that belong to the **same physical path** into one cluster
-- Gives the cluster a human name like *"Footpath behind Thao Dien Park connecting to Nguyen Van Huong"*
-- Hands you a ready-to-open JOSM bundle: small `.osm` of the 50m surroundings + every relevant GPX file
-- Lets you focus on the fun part: drawing beautiful, accurate missing geometry in JOSM
+Traces of the same physical path are clustered, checked against existing OSM ways, named after nearby landmarks, and exported as a small `.osm` of the 50m surroundings plus every GPX that covers it.
 
 ## Quickstart
 
+Requires Python 3.11+, [`uv`](https://docs.astral.sh/uv/) and `osmium-tool`.
+
 ```bash
-# 1. Clone
-git clone ... gpx-osm-missing-paths
+git clone https://github.com/evgeniyarbatov/gpx-osm-missing-paths.git
 cd gpx-osm-missing-paths
-
-# 2. Setup (uv)
 make setup
-cp env.example .env   # optional; defaults target HCMC + Vietnam cache
+cp env.example .env                # optional; defaults target HCMC
 
-# All generated pipeline data (GPX, city OSM clip, clusters) lives outside the repo,
-# under ~/Documents/data/gpx-osm-missing-paths/ by default (override in .env).
+make country                       # Vietnam PBF → ~/.cache/osm (prints manual download URL if unavailable)
+make city                          # clip to osm/hcm.poly
 
-# 3. Country OSM extract → ~/.cache/osm/vietnam-latest.osm.pbf
-# `make country` uses the author's private dotfiles helper if present (weekly
-# launchd refresh); without it, the command exits with the exact Geofabrik URL
-# and path to download the PBF to yourself. Either way, then:
-make country
-make city             # clip to osm/hcm.poly → ~/Documents/data/gpx-osm-missing-paths/osm/hcm.osm.pbf
+# Drop .gpx files into ~/Documents/data/gpx-osm-missing-paths/gpx/, or fetch from a parquet track repo:
+make gpx LAT=<lat> LON=<lon> RADIUS_KM=5   # filter is optional
 
-# 4. GPX input: either drop raw .gpx into ~/Documents/data/gpx-osm-missing-paths/gpx/
-# yourself, or fetch from a repo of per-city GeoParquet track exports (checked out
-# to ~/Documents/data/gpx-data) — most users will just drop files in
-make gpx LAT=<lat> LON=<lon> RADIUS_KM=5   # optional filter; omit for everything
-
-# 5. Full pipeline (fetch GPX + city clip + process + cluster + missing filter + name + extract)
 make pipeline
-
-# 6. Open results
 open ~/Documents/data/gpx-osm-missing-paths/clusters/
-# For any cluster:
-#   - Drag the .osm into JOSM
-#   - Drag the .gpx files from its gpx/ subfolder as reference layers
-#   - Draw the missing path where your traces show it should be
 ```
 
-### Other city / country
+In JOSM, open a cluster's `.osm`, add its `gpx/*.gpx` as reference layers, and draw the path.
 
-```bash
-# Another city (same country PBF) — add osm/hanoi.poly first
-make city BOUNDARY_POLYGON=osm/hanoi.poly
-make pipeline BOUNDARY_POLYGON=osm/hanoi.poly
+Another city: add `osm/<city>.poly`, then `make pipeline BOUNDARY_POLYGON=osm/<city>.poly`. Another country: `make country URL=<geofabrik .osm.pbf URL>`.
 
-# Another country (shared cache basename must match Geofabrik file)
-make country URL=https://download.geofabrik.de/asia/thailand-latest.osm.pbf
-```
-
-## Pipeline Stages
-
-| Step | Command | What it does |
-|------|---------|--------------|
-| 0a | `make country` | Ensure country PBF in `~/.cache/osm` — via the author's private dotfiles helper if present, else prints manual download instructions |
-| 0b | `make city` | Clip country PBF with `BOUNDARY_POLYGON` (default `osm/hcm.poly`) → `$OSM_DIR/<city>.osm.pbf` |
-| 0c | `make gpx` | Checkout/update the parquet track repo, convert its tracks → `$GPX_DIR/*.gpx` (optional `LAT`/`LON`/`RADIUS_KM` filter) |
-| 1 | `make process` | Parse every GPX, clean, simplify → `$OUTPUT_DIR/segments.*` |
-| 2 | `make cluster` | Cluster overlapping segments → representative lines |
-| 3 | `make filter-missing` | Keep only clusters poorly covered by OSM ways |
-| 4 | `make name` | POI-based human names for missing clusters |
-| 5 | `make extract` | 50m `.osm` + GPX bundle + `cluster_meta.json` (`num_gpx_traces`, `avg_length_m`) |
-| All | `make pipeline` | `gpx`, `city`, then 1→5 |
-
-## Output Structure
-
-`$CLUSTERS_DIR` (default `~/Documents/data/gpx-osm-missing-paths/clusters`):
+## Output
 
 ```
 clusters/
-└── footpath_behind_thao_dien_park_connecting_to_nguyen_van_huong/
-    ├── footpath_behind_thao_dien_park_connecting_to_nguyen_van_huong.osm   # JOSM-ready (everything in 50m buffer)
+└── footpath_near_thao_dien_park_off_nguyen_van_huong/
+    ├── footpath_near_thao_dien_park_off_nguyen_van_huong.osm
     ├── cluster_meta.json
     ├── representative.geojson
     └── gpx/
-        ├── morning_run_2025-06-12.gpx
-        ├── evening_loop_2025-06-18.gpx
-        └── ...
 ```
 
-Open the `.osm` in JOSM, load the GPX files from the subfolder, and you have perfect context + reference data.
+Bundles are written only for clusters seen in at least `MIN_CLUSTER_TRACES` GPX files (default 2) with low OSM coverage.
 
-## Requirements
+## Docs
 
-- Python 3.11+
-- `uv` (strongly preferred)
-- `osmium-tool` (city clip + per-cluster extracts); `make city` installs it via Homebrew if missing
-  - macOS: `brew install osmium-tool`
-  - Ubuntu/Debian: `apt install osmium-tool`
-- A country OSM PBF at `~/.cache/osm/<country>-latest.osm.pbf` — `make country` fetches this via the
-  author's private dotfiles helper if present, otherwise prints the Geofabrik URL and path to
-  download it to yourself
-
-## Data Location
-
-All generated pipeline data — `GPX_DIR`, `OUTPUT_DIR`, `CLUSTERS_DIR`, and the generated city
-OSM clip — defaults to `~/Documents/data/gpx-osm-missing-paths/{gpx,output,clusters,osm}`,
-outside the repo. Override any of these in `.env`. Committed city boundary polys
-(`osm/*.poly`) stay in-repo.
-
-## Tuning for Your City / Data
-
-Edit `.env`:
-
-- `MIN_SEGMENT_LENGTH_M` — ignore GPS noise / very short detours
-- `MIN_CLUSTER_TRACES` — min distinct GPX files before a path becomes a JOSM bundle (default 2; raise to 3 for fewer, higher-confidence paths)
-- `CLUSTER_MEAN_DISTANCE_M` / `CLUSTER_OVERLAP_FRACTION` — how tightly two chunks must align to count as the same stretch
-- `CLUSTER_BUFFER_M` / `POI_SEARCH_RADIUS_M` — usually 50m is perfect for urban footpaths
-- `SIMPLIFY_TOLERANCE_M` — 3-5m works well for running GPS
-
-See `docs/usage.md` for full parameter reference and recommended values for HCMC dense alleys vs. park trails.
-
-## Advanced / Optional
-
-- **Incremental runs**: The pipeline is designed to be re-runnable. Add new GPX files to `$GPX_DIR` and re-run `make pipeline`. (Full reprocess is fast enough for personal collections of a few thousand files.)
-
-## Contributing & Philosophy
-
-- Issues and PRs that improve JOSM mapping experience or clustering quality for real-world urban running data are very welcome.
-- This is a tool for **embodied mapping** — getting out, running/walking every street, and giving that data back to the commons as high-quality OSM geometry.
-- Built with ❤️ for the Saigon running + OSM community (and anyone else who wants their traces to improve the map).
-
-## Related
-
-- [JOSM](https://josm.openstreetmap.de/)
-- [osmium-tool](https://osmcode.org/osmium-tool/)
-- User's running + mapping notes often live at arbatov.uk or OSM diaries
-
----
-
-**Ready to map the missing paths?** Drop your GPX files and run `make pipeline`.
+- [Usage](docs/usage.md) — commands, `.env` knobs, testing against `samples/`
+- [Architecture](docs/architecture.md) — pipeline stages and data flow
+- [Missing-way detection](docs/missing-ways.md) — the coverage check
+- [Data model](docs/data-model.md)
+- [Troubleshooting](docs/troubleshooting.md)
+- [Roadmap](ROADMAP.md)
