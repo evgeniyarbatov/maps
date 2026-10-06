@@ -80,8 +80,8 @@ into `GPX_DIR`:
 
 ```bash
 make gpx                                        # every track in the repo
-make gpx LAT=10.7940 LON=106.7217 RADIUS_KM=5    # only tracks passing within 5km of a point
-make pipeline LAT=10.7940 LON=106.7217 RADIUS_KM=5  # same filter, then the full pipeline
+make gpx LAT=<lat> LON=<lon> RADIUS_KM=5    # only tracks passing within 5km of a point
+make pipeline LAT=<lat> LON=<lon> RADIUS_KM=5  # same filter, then the full pipeline
 ```
 
 The repo spans many cities/countries the mapper has run in; LAT/LON/RADIUS_KM keeps only

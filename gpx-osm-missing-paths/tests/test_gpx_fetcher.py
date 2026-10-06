@@ -49,7 +49,7 @@ def test_fetch_gpx_radius_filter_keeps_only_nearby_tracks(tmp_path: Path) -> Non
         [
             {
                 "name": "Near",
-                "geometry": LineString([(106.7217, 10.7940), (106.7220, 10.7945)]),
+                "geometry": LineString([(106.6981, 10.7725), (106.6984, 10.7730)]),
                 "city": "hcmc",
             },
             {
@@ -61,7 +61,7 @@ def test_fetch_gpx_radius_filter_keeps_only_nearby_tracks(tmp_path: Path) -> Non
     )
     settings = Settings(gpx_dir=tmp_path / "gpx")
 
-    summary = fetch_gpx_from_dir(settings, repo_dir, lat=10.7940, lon=106.7217, radius_km=5.0)
+    summary = fetch_gpx_from_dir(settings, repo_dir, lat=10.7725, lon=106.6981, radius_km=5.0)
 
     assert summary.tracks_seen == 2
     assert summary.tracks_kept == 1
