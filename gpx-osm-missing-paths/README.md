@@ -4,7 +4,7 @@
 
 Find footpaths, alleys and shortcuts you keep running that are missing from OpenStreetMap, and get a JOSM-ready bundle for each one. Fully local after the OSM extract is cached.
 
-![Real output of `gpx-osm process` + `gpx-osm cluster` on the bundled samples/*.gpx](docs/clusters-demo.svg)
+<img width="3216" height="1912" alt="josm" src="https://github.com/user-attachments/assets/098ddfc6-7292-4d65-8030-9b87f621cccb" />
 
 Traces of the same physical path are clustered, checked against existing OSM ways, named after nearby landmarks, and exported as a small `.osm` of the 50m surroundings plus every GPX that covers it.
 
