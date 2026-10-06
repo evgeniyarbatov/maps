@@ -46,13 +46,11 @@ help: ## Show this help
 	@echo "Other city:   make city BOUNDARY_POLYGON=osm/other.poly"
 	@echo "Other country: make country URL=https://download.geofabrik.de/…/foo-latest.osm.pbf"
 
-setup: ## Create venv with uv, install deps
-	uv venv
-	uv pip install -e ".[dev]"
+setup: install ## Create venv with uv, install deps
 	@echo "✅ Setup complete. Copy env.example → .env if needed."
 
 install: ## Install/update deps only
-	uv pip install -e ".[dev]"
+	uv sync --extra dev
 
 # --- Shared country PBF (dotfiles fetch-osm; no parallel download flow) ---
 
@@ -101,7 +99,7 @@ clean: ## Remove processed data and outputs under DATA_DIR (keep raw gpx + city 
 	rm -rf "$(DATA_DIR)/output"/* "$(DATA_DIR)/clusters"/* || true
 	@echo "🧹 Cleaned $(DATA_DIR)/output, $(DATA_DIR)/clusters"
 
-test: ## Run pytest with coverage
+test: install ## Run pytest with coverage
 	uv run pytest
 
 lint: ## Ruff + mypy
