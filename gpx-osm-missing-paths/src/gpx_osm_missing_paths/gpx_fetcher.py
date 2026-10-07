@@ -1,4 +1,4 @@
-"""Fetches raw GPX tracks from the evgeniyarbatov/gpx-data GeoParquet export into GPX_DIR."""
+"""Fetches raw GPX tracks from the gpx-data GeoParquet export (evgeniyarbatov/activity-data) into GPX_DIR."""
 
 from __future__ import annotations
 
@@ -26,14 +26,14 @@ class FetchGpxSummary:
 
 
 def checkout_gpx_data_repo(settings: Settings) -> Path:
-    """Clone ``gpx_data_repo_url`` if missing, else fast-forward pull. Returns its local path."""
+    """Clone ``gpx_data_repo_url`` if missing, else fast-forward pull. Returns the ``gpx_data_subdir`` inside it."""
     repo_dir = settings.gpx_data_repo_dir
     if (repo_dir / ".git").is_dir():
         subprocess.run(["git", "-C", str(repo_dir), "pull", "--ff-only"], check=True)
     else:
         repo_dir.parent.mkdir(parents=True, exist_ok=True)
         subprocess.run(["git", "clone", settings.gpx_data_repo_url, str(repo_dir)], check=True)
-    return repo_dir
+    return repo_dir / settings.gpx_data_subdir
 
 
 def _within_radius(line: LineString, lat: float, lon: float, radius_km: float) -> bool:

@@ -51,7 +51,7 @@ boundary poly (`BOUNDARY_POLYGON`, see above) stays in-repo under `osm/`.
 | Variable | Default | Meaning |
 |----------|---------|---------|
 | `GPX_DATA_REPO_URL` | (personal parquet track repo URL) | Repo of per-city GeoParquet track exports |
-| `GPX_DATA_ROOT` | `~/Documents/data` | Checkout lives at `GPX_DATA_ROOT/gpx-data` (outside the project dir) |
+| `GPX_DATA_ROOT` | `~/Documents/data` | Checkout lives at `GPX_DATA_ROOT/activity-data`; tracks are read from its `gpx-data/` folder |
 
 ### Clustering & naming knobs
 
@@ -75,7 +75,7 @@ boundary poly (`BOUNDARY_POLYGON`, see above) stays in-repo under `osm/`.
 
 `GPX_DATA_REPO_URL` points at a personal export repo of Strava/Android/Casio activity history,
 pre-simplified into per-city GeoParquet files (one row per track, no per-point time/elevation).
-`make gpx` clones/pulls it into `GPX_DATA_ROOT/gpx-data` and writes one `.gpx` file per track
+`make gpx` clones/pulls `activity-data` into `GPX_DATA_ROOT/activity-data` and writes one `.gpx` file per track
 into `GPX_DIR`:
 
 ```bash
