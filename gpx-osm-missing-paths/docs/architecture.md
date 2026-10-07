@@ -8,7 +8,7 @@
    ▼ make city  (osmium extract --polygon=osm/<city>.poly)
 $OSM_DIR/<city>.osm.pbf                   (default: ~/Documents/data/gpx-osm-missing-paths/osm/hcm.osm.pbf)
    │
-~/Documents/data/activity-data/gpx-data   (per-city GeoParquet track exports, git clone/pull)
+~/Documents/data/<repo>/<subdir>          (per-city GeoParquet track exports, git clone/pull)
    │
    ▼ make gpx  (gpx_fetcher.py — parquet tracks → .gpx, optional lat/lon/radius filter)
 $GPX_DIR/*.gpx
@@ -75,7 +75,7 @@ per-point time/elevation).
 
 | Layer | How | Path |
 |-------|-----|------|
-| Checkout | `git clone`/`pull` (`gpx_fetcher.checkout_gpx_data_repo`) | `GPX_DATA_ROOT/activity-data/gpx-data` (default `~/Documents/data/activity-data/gpx-data`) |
+| Checkout | `git clone`/`pull` (`gpx_fetcher.checkout_gpx_data_repo`) | `GPX_DATA_ROOT/<repo>/<GPX_DATA_SUBDIR>` (default root `~/Documents/data`) |
 | Per-track GPX | one file per parquet row, optional radius filter | `GPX_DIR/*.gpx` |
 
 The checkout lives outside the project directory (personal data, not project data) and is

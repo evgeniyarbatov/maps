@@ -1,4 +1,4 @@
-"""Fetches raw GPX tracks from the gpx-data GeoParquet export (evgeniyarbatov/activity-data) into GPX_DIR."""
+"""Fetches raw GPX tracks from a GeoParquet export repo (``GPX_DATA_REPO_URL``) into GPX_DIR."""
 
 from __future__ import annotations
 
@@ -27,6 +27,8 @@ class FetchGpxSummary:
 
 def checkout_gpx_data_repo(settings: Settings) -> Path:
     """Clone ``gpx_data_repo_url`` if missing, else fast-forward pull. Returns the ``gpx_data_subdir`` inside it."""
+    if not settings.gpx_data_repo_url:
+        raise SystemExit("Set GPX_DATA_REPO_URL (and GPX_DATA_SUBDIR if the exports live in a subfolder) in .env")
     repo_dir = settings.gpx_data_repo_dir
     if (repo_dir / ".git").is_dir():
         subprocess.run(["git", "-C", str(repo_dir), "pull", "--ff-only"], check=True)
