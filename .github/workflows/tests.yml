@@ -1,0 +1,37 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+    paths: ["gpx-courses/**", "gpx-osm-missing-paths/**", ".github/workflows/tests.yml"]
+  pull_request:
+    branches: [main]
+    paths: ["gpx-courses/**", "gpx-osm-missing-paths/**", ".github/workflows/tests.yml"]
+
+jobs:
+  gpx-courses:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: gpx-courses
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - run: uv sync --frozen
+      - run: uv run --frozen python -m unittest discover -s tests -p "test_*.py" -v
+
+  gpx-osm-missing-paths:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: gpx-osm-missing-paths
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]"
+      - run: ruff check src tests
+      - run: pytest
