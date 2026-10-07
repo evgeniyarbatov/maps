@@ -1,0 +1,12 @@
+pandas
+gpxpy
+geopandas
+shapely
+requests
+matplotlib
+contextily
+geopy
+polyline
+pyproj
+osmium
+haversine

@@ -1,0 +1,45 @@
+services:
+  osrm:
+    image: ghcr.io/project-osrm/osrm-backend:v6.0.0
+    volumes:
+      - ./osm/foot:/data
+      - ./profiles:/profiles
+    networks:
+      - default
+    ports:
+      - 6000:5000
+    restart: unless-stopped
+    command: >
+      sh -c "
+      osrm-extract -p /profiles/foot.lua /data/gpx.osm.pbf &&
+      osrm-partition /data/gpx.osrm &&
+      osrm-customize /data/gpx.osrm &&
+      osrm-routed \
+      --algorithm mld \
+      --max-matching-size 20000 \
+      --max-viaroute-size 20000 \
+      --max-trip-size 20000 \
+      --max-table-size 20000 \
+      /data/gpx.osrm
+      "
+  overpass-api:
+    image: wiktorn/overpass-api
+    container_name: overpass-api
+    volumes:
+      - ./osm/overpass-api:/data
+    ports:
+      - "18080:80"
+    restart: unless-stopped
+    environment:
+      - OVERPASS_META=yes
+      - OVERPASS_MODE=init
+      - OVERPASS_PLANET_URL=file:///data/gpx.osm.bz2
+      - OVERPASS_RULES_LOAD=10
+      - OVERPASS_ALLOW_DUPLICATE_QUERIES=yes
+      - OVERPASS_PLANET_PREPROCESS=chmod og+rx /db
+    networks:
+      - default
+
+networks:
+  default:
+    driver: bridge

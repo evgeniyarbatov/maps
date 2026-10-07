@@ -1,0 +1,63 @@
+[project]
+name = "gpx-courses"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "pandas",
+    "gpxpy",
+    "geopandas",
+    "shapely",
+    "requests",
+    "matplotlib",
+    "contextily",
+    "geopy",
+    "polyline",
+    "pyproj",
+    "osmium",
+    "haversine",
+]
+
+[tool.uv]
+package = false
+
+
+[tool.ruff]
+line-length = 99
+target-version = "py311"
+
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "C4", "UP", "SIM", "RET", "S"]
+ignore = ["E501", "B008", "S101"]
+
+[tool.ruff.lint.per-file-ignores]
+# Fixture paths for make -n dry runs; nothing is written to /tmp.
+"tests/**" = ["S108"]
+
+
+[tool.ruff.format]
+quote-style = "double"
+
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_ignores = true
+mypy_path = "."
+explicit_package_bases = true
+
+[[tool.mypy.overrides]]
+module = "contextily.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "geopy.*"
+ignore_missing_imports = true
+
+[dependency-groups]
+dev = [
+    "mypy>=2.3.0",
+    "types-geopandas>=1.1.4.20260628",
+    "types-shapely>=2.1.0.20260630",
+]
