@@ -1,0 +1,8 @@
+__pycache__/
+.DS_Store
+.ipynb_checkpoints/
+.venv
+node_modules/
+tests/images
+.venv/
+video/

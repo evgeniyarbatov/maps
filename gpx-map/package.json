@@ -1,0 +1,24 @@
+{
+  "name": "openlayers",
+  "version": "1.0.0",
+  "description": "Rendering GPX tracks with OpenLayers",
+  "main": "index.js",
+  "scripts": {
+    "start": "nodemon app.js",
+    "test": "npm run test:osm && npm run test:esri",
+    "test:osm": "BASEMAP=osm mocha tests/screenshot.test.js --timeout 10000",
+    "test:esri": "BASEMAP=esri mocha tests/screenshot.test.js --timeout 10000"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.19.2",
+    "nodemon": "^1.14.10",
+    "ol": "^9.2.4"
+  },
+  "devDependencies": {
+    "mocha": "^12.0.3",
+    "puppeteer": "^25.12.0"
+  }
+}
