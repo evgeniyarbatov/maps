@@ -1,0 +1,110 @@
+# uv: https://docs.astral.sh/uv — deps via `make setup` / `make install`, run with `uv run`
+#
+# Country OSM: shared cache from dotfiles (launchd com.arbatov.fetch-osm → ~/.cache/osm).
+# Do not re-download Geofabrik here; call fetch-osm via osm-country.mk only.
+URL = https://download.geofabrik.de/asia/vietnam-latest.osm.pbf
+DOTFILES_MK := $(HOME)/gitRepo/dotfiles/make/osm-country.mk
+
+ifneq ($(wildcard $(DOTFILES_MK)),)
+include $(DOTFILES_MK)
+else
+OSM_CACHE_DIR ?= $(HOME)/.cache/osm
+OSM_URL ?= $(URL)
+COUNTRY_OSM_FILE ?= $(notdir $(OSM_URL))
+COUNTRY_OSM_PATH := $(OSM_CACHE_DIR)/$(COUNTRY_OSM_FILE)
+
+country osm-country-fetch:
+	@echo "error: '$@' needs evgeniyarbatov/dotfiles (private helper); not found at $(DOTFILES_MK)." >&2
+	@echo "Fetch manually: download $(OSM_URL) into $(COUNTRY_OSM_PATH), then retry." >&2
+	@exit 1
+endif
+
+# All generated pipeline data (gpx/, output/, clusters/, city OSM clip) lives outside the
+# repo, under DATA_DIR. Committed boundary polys stay in-repo under osm/.
+DATA_ROOT ?= $(HOME)/Documents/data
+DATA_DIR ?= $(DATA_ROOT)/gpx-osm-missing-paths
+
+# City scope: any osmium-compatible .poly under osm/ (or absolute path). Default: HCMC.
+OSM_DIR = $(DATA_DIR)/osm
+BOUNDARY_POLYGON ?= osm/hcm.poly
+CITY := $(basename $(notdir $(BOUNDARY_POLYGON)))
+CITY_OSM_PBF := $(OSM_DIR)/$(CITY).osm.pbf
+CITY_OSM := $(OSM_DIR)/$(CITY).osm
+
+.PHONY: help setup install deps country city osm-check \
+	gpx process cluster filter-missing name extract pipeline \
+	clean test lint
+
+# Raw GPX source: github.com/evgeniyarbatov/gpx-data, per-city GeoParquet exports.
+# Optional LAT/LON/RADIUS_KM narrows `make gpx` to tracks near one point.
+
+help: ## Show this help
+	@grep -hE '^[a-zA-Z_-]+:.*?## .*$$' $(firstword $(MAKEFILE_LIST)) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+	@echo ""
+	@echo "OSM defaults: country=$(COUNTRY_OSM_PATH)"
+	@echo "              city poly=$(BOUNDARY_POLYGON) → $(CITY_OSM_PBF)"
+	@echo "Other city:   make city BOUNDARY_POLYGON=osm/other.poly"
+	@echo "Other country: make country URL=https://download.geofabrik.de/…/foo-latest.osm.pbf"
+
+setup: install ## Create venv with uv, install deps
+	@echo "✅ Setup complete. Copy env.example → .env if needed."
+
+install: ## Install/update deps only
+	uv sync --extra dev
+
+# --- Shared country PBF (dotfiles fetch-osm; no parallel download flow) ---
+
+country: osm-country-fetch ## Ensure country PBF in ~/.cache/osm (weekly launchd also refreshes)
+
+deps: ## Install osmium-tool via Homebrew if missing (macOS)
+	@command -v osmium >/dev/null || NONINTERACTIVE=1 brew install --yes osmium-tool
+
+city: deps ## Clip country PBF to BOUNDARY_POLYGON → osm/<city>.osm.pbf (+ .osm)
+	@test -f "$(BOUNDARY_POLYGON)" || (echo "Missing poly: $(BOUNDARY_POLYGON)" >&2; exit 1)
+	@test -f "$(COUNTRY_OSM_PATH)" || (echo "Missing country PBF: $(COUNTRY_OSM_PATH). Run: make country (or wait for launchd com.arbatov.fetch-osm)" >&2; exit 1)
+	@mkdir -p "$(OSM_DIR)"
+	osmium extract --polygon="$(BOUNDARY_POLYGON)" --overwrite -o "$(CITY_OSM_PBF)" "$(COUNTRY_OSM_PATH)"
+	osmium cat --overwrite "$(CITY_OSM_PBF)" -o "$(CITY_OSM)"
+	@echo "✅ City extract: $(CITY_OSM_PBF) (from $(BOUNDARY_POLYGON))"
+
+osm-check: ## Verify country cache + city extract exist
+	@test -f "$(COUNTRY_OSM_PATH)" || (echo "Missing $(COUNTRY_OSM_PATH); run: make country" >&2; exit 1)
+	@test -f "$(CITY_OSM_PBF)" || (echo "Missing $(CITY_OSM_PBF); run: make city" >&2; exit 1)
+	@echo "OK country=$(COUNTRY_OSM_PATH)"
+	@echo "OK city=$(CITY_OSM_PBF)"
+
+# --- Pipeline (uses city PBF as OSM_PBF_PATH) ---
+
+gpx: ## Fetch GPX tracks from gpx-data (parquet) into GPX_DIR; optional LAT/LON/RADIUS_KM filter
+	uv run gpx-osm fetch-gpx $(if $(LAT),--lat $(LAT)) $(if $(LON),--lon $(LON)) $(if $(RADIUS_KM),--radius-km $(RADIUS_KM))
+
+process: ## Parse/clean GPX → output/segments.*
+	uv run gpx-osm process
+
+cluster: ## Cluster overlapping segments
+	uv run gpx-osm cluster
+
+filter-missing: osm-check ## Keep only clusters poorly covered by OSM ways
+	OSM_PBF_PATH=$(CITY_OSM_PBF) uv run gpx-osm filter-missing
+
+name: osm-check ## POI names for missing clusters
+	OSM_PBF_PATH=$(CITY_OSM_PBF) uv run gpx-osm name
+
+extract: osm-check ## JOSM bundles (missing clusters only)
+	OSM_PBF_PATH=$(CITY_OSM_PBF) uv run gpx-osm extract
+
+pipeline: gpx city process cluster filter-missing name extract ## Full pipeline (fetch GPX + city clip + missing-path bundles)
+
+clean: ## Remove processed data and outputs under DATA_DIR (keep raw gpx + city polys)
+	rm -rf "$(DATA_DIR)/output"/* "$(DATA_DIR)/clusters"/* || true
+	@echo "🧹 Cleaned $(DATA_DIR)/output, $(DATA_DIR)/clusters"
+
+test: install ## Run pytest with coverage
+	uv run pytest
+
+lint: ## Ruff + mypy
+	uv run ruff check src tests
+	uv run mypy src
+
+# Entry point: full pipeline.
+run: pipeline

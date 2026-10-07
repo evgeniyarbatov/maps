@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="gpx-osm-missing-paths-samples" xmlns="http://www.topografix.com/GPX/1/1">
+  <trk>
+    <name>Đường tắt sau công viên Thảo Điền</name>
+    <trkseg>
+      <trkpt lat="10.804500" lon="106.738500"><ele>7.2</ele><time>2024-01-05T06:12:01Z</time></trkpt>
+      <trkpt lat="10.804510" lon="106.738637"><ele>7.1</ele><time>2024-01-05T06:12:04Z</time></trkpt>
+      <trkpt lat="10.804495" lon="106.738774"><ele>7.3</ele><time>2024-01-05T06:12:07Z</time></trkpt>
+      <trkpt lat="10.804505" lon="106.738911"><ele>7.2</ele><time>2024-01-05T06:12:10Z</time></trkpt>
+      <trkpt lat="10.804498" lon="106.739048"><ele>7.0</ele><time>2024-01-05T06:12:13Z</time></trkpt>
+      <trkpt lat="10.804512" lon="106.739185"><ele>7.1</ele><time>2024-01-05T06:12:16Z</time></trkpt>
+      <trkpt lat="10.804490" lon="106.739322"><ele>7.4</ele><time>2024-01-05T06:12:19Z</time></trkpt>
+      <trkpt lat="10.804505" lon="106.739459"><ele>7.2</ele><time>2024-01-05T06:12:22Z</time></trkpt>
+      <trkpt lat="10.804500" lon="106.739596"><ele>7.1</ele><time>2024-01-05T06:12:25Z</time></trkpt>
+      <trkpt lat="10.804508" lon="106.739733"><ele>7.0</ele><time>2024-01-05T06:12:28Z</time></trkpt>
+    </trkseg>
+  </trk>
+</gpx>

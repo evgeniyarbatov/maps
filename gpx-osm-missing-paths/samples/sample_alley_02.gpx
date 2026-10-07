@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="gpx-osm-missing-paths-samples" xmlns="http://www.topografix.com/GPX/1/1">
+  <trk>
+    <name>Morning run - shortcut behind the park</name>
+    <trkseg>
+      <trkpt lat="10.804540" lon="106.738450"><ele>7.4</ele><time>2024-01-12T06:05:00Z</time></trkpt>
+      <trkpt lat="10.804525" lon="106.738650"><ele>7.2</ele><time>2024-01-12T06:05:03Z</time></trkpt>
+      <trkpt lat="10.804535" lon="106.738850"><ele>7.3</ele><time>2024-01-12T06:05:06Z</time></trkpt>
+      <trkpt lat="10.804520" lon="106.739050"><ele>7.1</ele><time>2024-01-12T06:05:09Z</time></trkpt>
+      <trkpt lat="10.804538" lon="106.739250"><ele>7.2</ele><time>2024-01-12T06:05:12Z</time></trkpt>
+      <trkpt lat="10.804525" lon="106.739450"><ele>7.0</ele><time>2024-01-12T06:05:15Z</time></trkpt>
+      <trkpt lat="10.804533" lon="106.739650"><ele>7.1</ele><time>2024-01-12T06:05:18Z</time></trkpt>
+      <trkpt lat="10.804520" lon="106.739800"><ele>7.2</ele><time>2024-01-12T06:05:20Z</time></trkpt>
+    </trkseg>
+  </trk>
+</gpx>
