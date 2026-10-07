@@ -1,0 +1,316 @@
+import argparse
+import contextlib
+import csv
+import json
+from collections.abc import Sequence
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
+from xml.etree import ElementTree as ET
+
+KML_NS = "http://www.opengis.net/kml/2.2"
+REQUIRED_COLUMNS = {"cell_id", "cell_boundary", "vibe", "label"}
+AREA_CELLS_REQUIRED_COLUMNS = {"cell_id", "cell_features", "scores"}
+DEFAULT_AREA_CELLS_CSV = "osm/area-cells.csv"
+VALID_LABELS = {"positive", "mixed", "negative"}
+
+Position = tuple[float, float]
+
+if TYPE_CHECKING:
+    Element = ET.Element[str]
+else:
+    Element = ET.Element
+
+LABEL_COLORS = {
+    "positive": "2E8B57",
+    "mixed": "E9C46A",
+    "negative": "C1121F",
+}
+TRACK_COLOR = "1D4ED8"
+
+
+def sanitize_vibe(vibe: Any) -> str:
+    cleaned = " ".join(str(vibe or "").split()).strip()
+    if cleaned:
+        return cleaned
+    return "Unclassified vibe"
+
+
+def normalize_label(label: Any) -> str:
+    cleaned = str(label or "").strip().lower()
+    if cleaned in VALID_LABELS:
+        return cleaned
+    return "mixed"
+
+
+def rgb_to_kml_color(rgb_hex: str, alpha: str) -> str:
+    rgb = rgb_hex.strip().lstrip("#")
+    if len(rgb) != 6:
+        raise ValueError(f"Expected 6-char RGB color, got: {rgb_hex}")
+    red = rgb[0:2]
+    green = rgb[2:4]
+    blue = rgb[4:6]
+    return f"{alpha}{blue}{green}{red}"
+
+
+def parse_json_object(cell_id: str, column_name: str, raw_value: Any) -> dict[str, Any]:
+    try:
+        payload = json.loads(raw_value)
+    except (TypeError, json.JSONDecodeError) as exc:
+        raise ValueError(f"Cell {cell_id}: invalid JSON in {column_name}: {exc}") from exc
+    if not isinstance(payload, dict):
+        raise ValueError(f"Cell {cell_id}: expected JSON object in {column_name}")
+    return payload
+
+
+def normalize_position(cell_id: str, position: Any) -> Position:
+    if not isinstance(position, list) or len(position) < 2:
+        raise ValueError(f"Cell {cell_id}: invalid coordinate pair in cell_boundary")
+    try:
+        lon = float(position[0])
+        lat = float(position[1])
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"Cell {cell_id}: non-numeric coordinate in cell_boundary") from exc
+    return lon, lat
+
+
+def ensure_closed_ring(cell_id: str, ring: list[Position]) -> list[Position]:
+    if not ring:
+        raise ValueError(f"Cell {cell_id}: empty ring in cell_boundary")
+
+    closed_ring = list(ring)
+    if closed_ring[0] != closed_ring[-1]:
+        closed_ring.append(closed_ring[0])
+
+    if len(closed_ring) < 4:
+        raise ValueError(f"Cell {cell_id}: ring must contain at least 4 coordinates")
+    return closed_ring
+
+
+def parse_ring(cell_id: str, raw_ring: Any) -> list[Position]:
+    if not isinstance(raw_ring, list):
+        raise ValueError(f"Cell {cell_id}: ring is not an array")
+    normalized = [normalize_position(cell_id, position) for position in raw_ring]
+    return ensure_closed_ring(cell_id, normalized)
+
+
+def parse_polygons(cell_id: str, raw_boundary: Any) -> list[dict[str, Any]]:
+    try:
+        boundary = json.loads(raw_boundary)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Cell {cell_id}: invalid JSON in cell_boundary: {exc}") from exc
+
+    if not isinstance(boundary, dict):
+        raise ValueError(f"Cell {cell_id}: cell_boundary must be a GeoJSON object")
+
+    geometry_type = boundary.get("type")
+    coordinates = boundary.get("coordinates")
+    raw_polygons: Any
+    if geometry_type == "Polygon":
+        raw_polygons = [coordinates]
+    elif geometry_type == "MultiPolygon":
+        raw_polygons = coordinates
+    else:
+        raise ValueError(
+            f"Cell {cell_id}: unsupported geometry type in cell_boundary: {geometry_type}"
+        )
+
+    if not isinstance(raw_polygons, list) or not raw_polygons:
+        raise ValueError(f"Cell {cell_id}: missing polygon coordinates in cell_boundary")
+
+    polygons: list[dict[str, Any]] = []
+    for polygon in raw_polygons:
+        if not isinstance(polygon, list) or not polygon:
+            raise ValueError(f"Cell {cell_id}: polygon has no rings in cell_boundary")
+        outer = parse_ring(cell_id, polygon[0])
+        inners = [parse_ring(cell_id, ring) for ring in polygon[1:]]
+        polygons.append({"outer": outer, "inners": inners})
+    return polygons
+
+
+def format_coords(ring: Sequence[Position]) -> str:
+    return " ".join(f"{lon:.8f},{lat:.8f},0" for lon, lat in ring)
+
+
+def add_polygon(parent: Element, polygon: dict[str, Any]) -> None:
+    polygon_element = ET.SubElement(parent, f"{{{KML_NS}}}Polygon")
+    ET.SubElement(polygon_element, f"{{{KML_NS}}}tessellate").text = "1"
+
+    outer_boundary = ET.SubElement(polygon_element, f"{{{KML_NS}}}outerBoundaryIs")
+    outer_ring = ET.SubElement(outer_boundary, f"{{{KML_NS}}}LinearRing")
+    ET.SubElement(outer_ring, f"{{{KML_NS}}}coordinates").text = format_coords(polygon["outer"])
+
+    for inner in polygon["inners"]:
+        inner_boundary = ET.SubElement(polygon_element, f"{{{KML_NS}}}innerBoundaryIs")
+        inner_ring = ET.SubElement(inner_boundary, f"{{{KML_NS}}}LinearRing")
+        ET.SubElement(inner_ring, f"{{{KML_NS}}}coordinates").text = format_coords(inner)
+
+
+def read_area_cells_details(area_cells_csv_path: str) -> dict[str, dict[str, Any]]:
+    with open(area_cells_csv_path, newline="", encoding="utf-8") as source:
+        reader = csv.DictReader(source)
+        missing = AREA_CELLS_REQUIRED_COLUMNS.difference(set(reader.fieldnames or []))
+        if missing:
+            missing_list = ", ".join(sorted(missing))
+            raise ValueError(f"Missing required columns in area cells CSV: {missing_list}")
+
+        details = {}
+        for row in reader:
+            cell_id = row["cell_id"]
+            details[cell_id] = {
+                "cell_features": parse_json_object(cell_id, "cell_features", row["cell_features"]),
+                "scores": parse_json_object(cell_id, "scores", row["scores"]),
+            }
+    return details
+
+
+def read_area_vibe_rows(
+    input_csv_path: str, cell_details: dict[str, dict[str, Any]]
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    with open(input_csv_path, newline="", encoding="utf-8") as source:
+        reader = csv.DictReader(source)
+        missing = REQUIRED_COLUMNS.difference(set(reader.fieldnames or []))
+        if missing:
+            missing_list = ", ".join(sorted(missing))
+            raise ValueError(f"Missing required columns: {missing_list}")
+
+        for row in reader:
+            cell_id = row["cell_id"]
+            vibe = sanitize_vibe(row["vibe"])
+            label = normalize_label(row.get("label"))
+            polygons = parse_polygons(cell_id, row["cell_boundary"])
+            details = cell_details.get(cell_id, {"cell_features": {}, "scores": {}})
+            rows.append(
+                {
+                    "cell_id": cell_id,
+                    "vibe": vibe,
+                    "label": label,
+                    "polygons": polygons,
+                    "cell_features": details["cell_features"],
+                    "scores": details["scores"],
+                }
+            )
+    return rows
+
+
+def build_label_styles(rows: list[dict[str, Any]]) -> dict[str, dict[str, str]]:
+    labels_present = {row["label"] for row in rows}
+    styles: dict[str, dict[str, str]] = {}
+    for label in ["positive", "mixed", "negative"]:
+        if label not in labels_present:
+            continue
+        rgb = LABEL_COLORS[label]
+        styles[label] = {
+            "area_style_id": f"area-label-{label}",
+            "line_color": rgb_to_kml_color(rgb, "ff"),
+            "fill_color": rgb_to_kml_color(rgb, "88"),
+        }
+    return styles
+
+
+def add_styles(document: Element, styles: dict[str, dict[str, str]]) -> None:
+    for style in styles.values():
+        area_style = ET.SubElement(document, f"{{{KML_NS}}}Style", id=style["area_style_id"])
+        line_style = ET.SubElement(area_style, f"{{{KML_NS}}}LineStyle")
+        ET.SubElement(line_style, f"{{{KML_NS}}}color").text = style["line_color"]
+        ET.SubElement(line_style, f"{{{KML_NS}}}width").text = "1.2"
+        poly_style = ET.SubElement(area_style, f"{{{KML_NS}}}PolyStyle")
+        ET.SubElement(poly_style, f"{{{KML_NS}}}color").text = style["fill_color"]
+        ET.SubElement(poly_style, f"{{{KML_NS}}}fill").text = "1"
+        ET.SubElement(poly_style, f"{{{KML_NS}}}outline").text = "1"
+
+
+def build_description(row: dict[str, Any]) -> str:
+    cell_features = json.dumps(row["cell_features"], indent=2, sort_keys=True)
+    scores = json.dumps(row["scores"], indent=2, sort_keys=True)
+    return (
+        f"Area {row['cell_id']}\n"
+        f"Vibe: {row['vibe']}\n"
+        f"Label: {row['label']}\n\n"
+        f"Cell Features:\n{cell_features}\n\n"
+        f"Scores:\n{scores}"
+    )
+
+
+def add_area_placemark(document: Element, row: dict[str, Any], style: dict[str, str]) -> None:
+    area = ET.SubElement(document, f"{{{KML_NS}}}Placemark")
+    ET.SubElement(area, f"{{{KML_NS}}}name").text = f"{row['vibe']} ({row['cell_id']})"
+    ET.SubElement(area, f"{{{KML_NS}}}description").text = build_description(row)
+    ET.SubElement(area, f"{{{KML_NS}}}styleUrl").text = f"#{style['area_style_id']}"
+
+    polygons = row["polygons"]
+    if len(polygons) == 1:
+        add_polygon(area, polygons[0])
+        return
+
+    multi_geometry = ET.SubElement(area, f"{{{KML_NS}}}MultiGeometry")
+    for polygon in polygons:
+        add_polygon(multi_geometry, polygon)
+
+
+def add_track_placemark(document: Element, track_geojson_path: str) -> None:
+    geometry = json.loads(Path(track_geojson_path).read_text(encoding="utf-8"))
+    style = ET.SubElement(document, f"{{{KML_NS}}}Style", id="track")
+    line_style = ET.SubElement(style, f"{{{KML_NS}}}LineStyle")
+    ET.SubElement(line_style, f"{{{KML_NS}}}color").text = rgb_to_kml_color(TRACK_COLOR, "ff")
+    ET.SubElement(line_style, f"{{{KML_NS}}}width").text = "3"
+
+    track = ET.SubElement(document, f"{{{KML_NS}}}Placemark")
+    ET.SubElement(track, f"{{{KML_NS}}}name").text = "Track"
+    ET.SubElement(track, f"{{{KML_NS}}}styleUrl").text = "#track"
+    line = ET.SubElement(track, f"{{{KML_NS}}}LineString")
+    coords = [(lon, lat) for lon, lat in geometry["coordinates"]]
+    ET.SubElement(line, f"{{{KML_NS}}}coordinates").text = format_coords(coords)
+
+
+def build_area_vibe_kml(
+    input_csv_path: str,
+    output_kml_path: str,
+    area_cells_csv_path: str = DEFAULT_AREA_CELLS_CSV,
+    track_geojson_path: str | None = None,
+) -> None:
+    cell_details = read_area_cells_details(area_cells_csv_path)
+    rows = read_area_vibe_rows(input_csv_path, cell_details)
+    styles = build_label_styles(rows)
+
+    output_path = Path(output_kml_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    ET.register_namespace("", KML_NS)
+    root = ET.Element(f"{{{KML_NS}}}kml")
+    document = ET.SubElement(root, f"{{{KML_NS}}}Document")
+    ET.SubElement(document, f"{{{KML_NS}}}name").text = "area-vibe"
+
+    add_styles(document, styles)
+    for row in rows:
+        style = styles[row["label"]]
+        add_area_placemark(document, row, style)
+    if track_geojson_path is not None:
+        add_track_placemark(document, track_geojson_path)
+
+    tree = ET.ElementTree(root)
+    with contextlib.suppress(AttributeError):
+        ET.indent(tree, space="  ")
+    tree.write(output_path, encoding="utf-8", xml_declaration=True)
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "input_csv", help="Input CSV with columns: cell_id, cell_boundary, vibe, label"
+    )
+    parser.add_argument("output_kml", help="Output KML path")
+    parser.add_argument(
+        "--area-cells-csv",
+        default=DEFAULT_AREA_CELLS_CSV,
+        help=f"Area cells CSV with cell_features and scores (default: {DEFAULT_AREA_CELLS_CSV})",
+    )
+    parser.add_argument(
+        "--track-geojson", help="GeoJSON LineString of the run, drawn on top of the cells"
+    )
+    return parser.parse_args()
+
+
+if __name__ == "__main__":
+    args = parse_args()
+    build_area_vibe_kml(args.input_csv, args.output_kml, args.area_cells_csv, args.track_geojson)
