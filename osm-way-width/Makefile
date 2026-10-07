@@ -1,0 +1,79 @@
+# Uses uv (https://docs.astral.sh/uv) for dependency management — uv sync creates/updates .venv; run commands via uv run, no manual activation.
+
+PYTHON := uv run python
+
+DATA_ROOT ?= $(HOME)/data
+REPO_NAME := $(notdir $(CURDIR))
+DATA_DIR  ?= $(DATA_ROOT)/$(REPO_NAME)
+
+OSM_URL = https://download.geofabrik.de/asia/vietnam-latest.osm.pbf
+
+DOTFILES_MK := $(HOME)/gitRepo/dotfiles/make/osm-country.mk
+
+# Set before the include: osm-country.mk only does `OSM_DIR ?=`.
+OSM_DIR := $(DATA_DIR)/osm
+
+.PHONY: country osm-country-fetch
+
+ifneq ($(wildcard $(DOTFILES_MK)),)
+include $(DOTFILES_MK)
+else
+COUNTRY_OSM_FILE ?= $(notdir $(OSM_URL))
+
+country osm-country-fetch:
+	@echo "error: '$@' needs evgeniyarbatov/dotfiles (private helper); not found at $(DOTFILES_MK)." >&2
+	@echo "Fetch manually: download $(OSM_URL) into $(OSM_DIR)/$(COUNTRY_OSM_FILE), then retry." >&2
+	@exit 1
+endif
+
+# Tracked input (city boundary), independent of OSM_DIR/DATA_DIR.
+BOUNDARY_POLY = osm/times-city.poly
+
+WAY_ID = 1124683045
+WAY_START_NODE = 10284859794
+WAY_END_NODE = 10284859797
+
+# Tracked input (checked-in Strava polylines), not generated output.
+POLYLINE_DIR = data/polylines
+SEGMENT_LENGTH = 10
+WIDTH_SEGMENTS = $(DATA_DIR)/width_segments.csv
+WIDTH_SEGMENTS_PNG = $(DATA_DIR)/width_segments.png
+
+.PHONY: install lock area way width segments test run help
+
+install:
+	@uv sync
+
+lock:
+	@uv lock
+
+area:
+	@osmconvert $(OSM_DIR)/$(COUNTRY_OSM_FILE) -B=$(BOUNDARY_POLY) -o=$(OSM_DIR)/times-city.osm.pbf
+	@osmium cat --overwrite $(OSM_DIR)/times-city.osm.pbf -o $(OSM_DIR)/times-city.osm
+
+way: install
+	@$(PYTHON) scripts/extract_way_segment.py $(OSM_DIR)/times-city.osm $(OSM_DIR)/way.osm $(WAY_ID) $(WAY_START_NODE) $(WAY_END_NODE)
+
+width: install
+	@$(PYTHON) scripts/estimate_way_width.py $(OSM_DIR)/way.osm $(POLYLINE_DIR)
+
+segments: install
+	@$(PYTHON) scripts/segment_way_width.py $(OSM_DIR)/way.osm $(POLYLINE_DIR) $(WIDTH_SEGMENTS) $(WIDTH_SEGMENTS_PNG) $(SEGMENT_LENGTH)
+
+test: install
+	@$(PYTHON) -m unittest discover -s tests
+
+# Entry point: full pipeline (assumes `make country` was already run once).
+# area -> way -> segments, using the WAY_ID/BOUNDARY_POLY defaults in this Makefile.
+run: area way segments
+	@echo "Run complete."
+
+help:
+	@echo "install   - uv sync (create/update .venv and install deps)"
+	@echo "lock      - uv lock (refresh uv.lock)"
+	@echo "area      - clip OSM extract to the boundary polygon"
+	@echo "way       - extract a single way segment"
+	@echo "width     - estimate way width along the polyline"
+	@echo "segments  - segment way width estimates and plot"
+	@echo "test      - run unit tests"
+	@echo "run       - entry point: area + way + segments (after one-time 'make country')"
