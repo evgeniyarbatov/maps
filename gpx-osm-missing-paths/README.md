@@ -13,7 +13,7 @@ Traces of the same physical path are clustered, checked against existing OSM way
 Requires Python 3.11+, [`uv`](https://docs.astral.sh/uv/) and `osmium-tool`.
 
 ```bash
-git clone https://github.com/evgeniyarbatov/gpx-osm-missing-paths.git
+git clone https://github.com/evgeniyarbatov/maps.git
 cd gpx-osm-missing-paths
 make setup
 cp env.example .env                # optional; defaults target HCMC
