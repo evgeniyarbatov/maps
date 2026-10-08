@@ -1,0 +1,4 @@
+brew "gpsbabel"
+brew "osmium-tool"
+brew "wget"
+brew "colima"

@@ -9,13 +9,8 @@ Build a clean course GPX from raw activity traces by:
 6. exporting one or more final GPX routes.
 
 ## Prerequisites
-- Python 3 + `venv`
-- `gpsbabel`
-- `osmconvert`
-- `osmium` CLI
-- `wget`
-- `bzip2`
-- `colima` + `docker` or `nerdctl` (for local OSRM + Overpass via `docker-compose.yaml`; `make docker` detects colima's active runtime and uses whichever CLI matches)
+- Homebrew + `uv`; `make install` installs the rest from `Brewfile` (`gpsbabel`, `osmium-tool`, `wget`, `colima`)
+- `docker` or `nerdctl` (for local OSRM + Overpass via `docker-compose.yaml`; `make docker` detects colima's active runtime and uses whichever CLI matches)
 
 ## Key Makefile variables
 - `GPX_DIR` (required for `make plotgpx` and `make parse`)

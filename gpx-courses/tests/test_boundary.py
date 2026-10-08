@@ -19,10 +19,10 @@ class BoundaryTests(unittest.TestCase):
             lines = output_poly.read_text(encoding="utf-8").strip().splitlines()
 
         self.assertGreaterEqual(len(lines), 6)
-        self.assertEqual(lines[0], "boundary")
-        self.assertEqual(lines[-1], "END")
+        self.assertEqual(lines[:2], ["boundary", "1"])
+        self.assertEqual(lines[-2:], ["END", "END"])
 
-        for line in lines[1:-1]:
+        for line in lines[2:-2]:
             parts = line.split()
             self.assertEqual(len(parts), 2)
             float(parts[0])

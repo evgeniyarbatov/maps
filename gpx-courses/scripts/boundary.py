@@ -32,10 +32,10 @@ def main(csv_file: str, boundary_file: str) -> None:
     coords = list(buffered_geometry.exterior.coords)
 
     with open(boundary_file, "w") as f:
-        f.write("boundary\n")
+        f.write("boundary\n1\n")
         for lon, lat in coords:
             f.write(f"   {lon:.6f}   {lat:.6f}\n")
-        f.write("END\n")
+        f.write("END\nEND\n")
 
 
 def _parse_args() -> argparse.Namespace:

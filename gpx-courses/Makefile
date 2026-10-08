@@ -28,13 +28,16 @@ country osm-country-fetch:
 endif
 
 .PHONY: \
-	install lock test \
+	install brew-deps lock test \
 	clean clean-data clean-data-gpx \
 	gpx-input-check \
 	plotgpx compress extract boundary country osmextract docker docker-stop match filter trip gpx parse course run help
 
-install:
+install: brew-deps
 	@uv sync
+
+brew-deps:
+	@brew bundle check --file=Brewfile >/dev/null 2>&1 || brew bundle --file=Brewfile
 
 lock:
 	@uv lock
@@ -77,9 +80,9 @@ boundary: install
 	@mkdir -p $(DATA_DIR)
 	@uv run python scripts/boundary.py $(DATA_DIR)/gpx.csv $(DATA_DIR)/boundary.poly
 
-osmextract:
+osmextract: brew-deps
 	@mkdir -p $(OSM_DIR)/foot $(OSM_DIR)/overpass-api
-	@osmconvert $(OSM_DIR)/$(COUNTRY_OSM_FILE) -B=$(DATA_DIR)/boundary.poly -o=$(OSM_DIR)/foot/gpx.osm.pbf
+	@osmium extract --overwrite -p $(DATA_DIR)/boundary.poly $(OSM_DIR)/$(COUNTRY_OSM_FILE) -o $(OSM_DIR)/foot/gpx.osm.pbf
 	@osmium cat --overwrite $(OSM_DIR)/foot/gpx.osm.pbf -o $(OSM_DIR)/gpx.osm
 	@bzip2 -c $(OSM_DIR)/gpx.osm > $(OSM_DIR)/overpass-api/gpx.osm.bz2
 
@@ -164,7 +167,8 @@ run: parse docker course
 	@echo "Run complete."
 
 help:
-	@echo "install         - uv sync deps"
+	@echo "install         - brew-deps + uv sync deps"
+	@echo "brew-deps       - install Homebrew deps from Brewfile"
 	@echo "lock            - refresh uv.lock"
 	@echo "test            - run unit tests"
 	@echo "clean/clean-data - clear \$$(DATA_DIR) (default: ~/data/gpx-courses)"

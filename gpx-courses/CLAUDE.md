@@ -8,7 +8,7 @@ Builds a clean course GPX from raw activity traces: simplify source GPX → clip
 
 ## Commands
 
-- `make install` — create venv, install `requirements.txt`
+- `make install` — `brew bundle` system deps from `Brewfile`, then `uv sync`
 - `make test` — `unittest discover -s tests -p "test_*.py"`; run a single test with `.venv/bin/python -m unittest tests.test_trip.TestTrip.test_name`
 - `make country` — one-time download of the country OSM PBF (`OSM_URL` in Makefile)
 - `make parse GPX_DIR=/path/to/gpx` — runs `compress → extract → boundary → osmextract`
@@ -18,7 +18,7 @@ Builds a clean course GPX from raw activity traces: simplify source GPX → clip
 - `make clean-data` / `make clean-data-gpx` — clear `$(DATA_DIR)` (all generated files, or just `*.gpx`)
 - `DATA_DIR` — where all generated files (and the clipped `osm/` extract) go, default `~/data/gpx-courses`; override with `DATA_ROOT=` or `DATA_DIR=`
 
-Full end-to-end sequence and prerequisites (`gpsbabel`, `osmconvert`, `osmium`, `wget`, `bzip2`, `colima`) are in README.md.
+Full end-to-end sequence and prerequisites are in README.md.
 
 ## Architecture
 
@@ -27,7 +27,7 @@ Each pipeline stage is a standalone script in `scripts/`, wired together by Make
 Stage flow and contracts:
 1. `compress.py` / `extract.py` — read raw GPX dir → `$(DATA_DIR)/gpx_compressed`, flattened `$(DATA_DIR)/gpx.csv` (lat/lon points)
 2. `boundary.py` — convex hull of points in metric CRS + 100m buffer → `$(DATA_DIR)/boundary.poly`
-3. `osmextract` (Makefile target, no script) — `osmconvert` clips the country PBF to the boundary, `osmium` converts to `.osm`, `bzip2` compresses for Overpass → `$(OSM_DIR)/foot/gpx.osm.pbf`, `$(OSM_DIR)/overpass-api/gpx.osm.bz2` (`OSM_DIR` = `$(DATA_DIR)/osm`)
+3. `osmextract` (Makefile target, no script) — `osmium extract` clips the country PBF to the boundary, `osmium cat` converts to `.osm`, `bzip2` compresses for Overpass → `$(OSM_DIR)/foot/gpx.osm.pbf`, `$(OSM_DIR)/overpass-api/gpx.osm.bz2` (`OSM_DIR` = `$(DATA_DIR)/osm`)
 4. `docker` target — starts OSRM (serving the clipped PBF) and Overpass (serving the bz2 dump) containers per `docker-compose.yaml`
 5. `match.py` — OSRM `/match/v1/foot` + `/nearest/v1/foot`, then Overpass for way IDs → `$(DATA_DIR)/osm-gpx.csv` (lat, lon, ways)
 6. `filter.py` — greedy farthest-point-first selection enforcing minimum spacing (`--distance-meters`, default 100m), optional `--max-points` / `--center-mode` → `$(DATA_DIR)/filtered-osm-gpx.csv`
