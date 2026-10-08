@@ -1,6 +1,22 @@
 # maps
 
-Open tools that join my GPS traces with OpenStreetMap: merge tracks into courses, find footpaths missing from OSM, measure how wide a way really is, pull waypoints, and put GPX tracks and geotagged photos on a map.
+Open tools that join GPS traces with OpenStreetMap. They merge tracks into courses, find footpaths missing from OSM, measure how wide a way really is, pull waypoints, and put GPX tracks and geotagged photos on a map. Every tool here works on anyone's traces, not just mine.
+
+## How the pieces fit
+
+```
+GPS traces (GPX, or a GeoParquet export repo) ─┐
+                                               ├─► gpx-courses ─────────► one course from many tracks
+OSM extract + local OSRM ──────────────────────┤   gpx-osm-missing-paths ► JOSM-ready bundles of missing footpaths
+                                               ├─► osm-way-width ───────► how wide each way really is
+                                               └─► osm-waypoints, vibe-mapping ─► places and the feel of an area
+GPX tracks, geotagged photos ──► gpx-map, photo-map ──► on the map
+```
+
+## Shared building blocks
+
+- **One OSM country extract**, clipped per city with a `.poly` boundary. It's reused by every OSM folder.
+- **Traces as GeoParquet or GPX**: gpx-osm-missing-paths reads either a local folder or a repo set in `.env`.
 
 ## Projects
 
