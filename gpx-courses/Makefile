@@ -14,7 +14,7 @@ export OSM_DIR
 OSM_URL := https://download.geofabrik.de/asia/vietnam-latest.osm.pbf
 
 # Fails after ~10 min; Overpass builds its database on first start.
-wait-http = n=0; until curl -s $(1) -o /dev/null "$(2)"; do \
+wait-http = n=0; until curl -sg $(1) -o /dev/null "$(2)"; do \
 	n=$$((n+1)); [ $$n -lt 120 ] || { echo "Timed out waiting for $(2)" >&2; exit 1; }; sleep 5; \
 	done
 
