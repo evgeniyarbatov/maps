@@ -1,5 +1,6 @@
 import argparse
 import os
+import sys
 from typing import Any
 
 import pandas as pd
@@ -8,6 +9,8 @@ import requests
 OSRM_URL = "http://localhost:6000/match/v1/foot/"
 OVERPASS_API_URL = os.getenv("OVERPASS_API_URL", "http://localhost:18080/api/interpreter")
 MATCH_RADIUS_METERS = 20
+# OSRM answers HTTP 400 with these codes when a pair can't be snapped to the road network.
+UNMATCHABLE_CODES = {"NoMatch", "NoSegment"}
 REQUEST_TIMEOUT_SECONDS = 30
 DEFAULT_GPX_CSV = "data/gpx.csv"
 DEFAULT_MATCHED_CSV = "data/osm-gpx.csv"
@@ -39,6 +42,7 @@ def get_ways(nodes: list[int]) -> list[int]:
     response = requests.get(
         OVERPASS_API_URL, params={"data": overpass_query}, timeout=REQUEST_TIMEOUT_SECONDS
     )
+    response.raise_for_status()
     data = response.json()
 
     return [element["id"] for element in data.get("elements", []) if element["type"] == "way"]
@@ -50,23 +54,22 @@ def get_matched_pair(
     coords_str = f"{coord1[1]},{coord1[0]};{coord2[1]},{coord2[0]}"
     url = f"{OSRM_URL}{coords_str}?radiuses={MATCH_RADIUS_METERS};{MATCH_RADIUS_METERS}"
 
-    try:
-        response = requests.get(url, timeout=REQUEST_TIMEOUT_SECONDS)
-        response.raise_for_status()
-        data = response.json()
-
-        matched_coords: list[list[Any]] = []
-        if "tracepoints" in data:
-            for tracepoint in data["tracepoints"]:
-                (lon, lat) = tracepoint["location"]
-
-                nodes = get_nodes(lat, lon)
-                ways = get_ways(nodes)
-
-                matched_coords.append([lat, lon, ways])
-        return matched_coords
-    except requests.RequestException:
+    response = requests.get(url, timeout=REQUEST_TIMEOUT_SECONDS)
+    data = response.json()
+    if data.get("code") in UNMATCHABLE_CODES:
         return None
+    response.raise_for_status()
+
+    matched_coords: list[list[Any]] = []
+    if "tracepoints" in data:
+        for tracepoint in data["tracepoints"]:
+            (lon, lat) = tracepoint["location"]
+
+            nodes = get_nodes(lat, lon)
+            ways = get_ways(nodes)
+
+            matched_coords.append([lat, lon, ways])
+    return matched_coords
 
 
 def main(csv_file: str, matched_csv_file: str) -> None:
@@ -93,6 +96,9 @@ def main(csv_file: str, matched_csv_file: str) -> None:
                     "ways": ways,
                 }
             )
+
+    if not matched_data:
+        sys.exit(f"No points from {csv_file} matched to OSM ways.")
 
     matched_df = pd.DataFrame(matched_data)
 

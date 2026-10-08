@@ -5,5 +5,3 @@ __pycache__/
 .venv/
 /data/*
 !/data/.gitignore
-/osm/*
-!/osm/.gitignore

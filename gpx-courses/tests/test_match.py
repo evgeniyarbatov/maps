@@ -55,14 +55,23 @@ class MatchTests(unittest.TestCase):
         self.assertEqual(way_ids, [222, 333])
         self.assertEqual(mock_get.call_args.kwargs["params"].keys(), {"data"})
 
-    def test_get_matched_pair_returns_none_on_request_failure(self) -> None:
-        with mock.patch(
-            "scripts.match.requests.get",
-            side_effect=requests.RequestException("boom"),
-        ):
+    def test_get_matched_pair_returns_none_when_osrm_cannot_match(self) -> None:
+        response = FakeResponse({"code": "NoMatch"}, status_code=400)
+
+        with mock.patch("scripts.match.requests.get", return_value=response):
             matched = match.get_matched_pair((21.0, 105.0), (21.1, 105.1))
 
         self.assertIsNone(matched)
+
+    def test_get_matched_pair_raises_when_osrm_unreachable(self) -> None:
+        with (
+            mock.patch(
+                "scripts.match.requests.get",
+                side_effect=requests.ConnectionError("refused"),
+            ),
+            self.assertRaises(requests.ConnectionError),
+        ):
+            match.get_matched_pair((21.0, 105.0), (21.1, 105.1))
 
     def test_get_matched_pair_resolves_tracepoints_to_way_ids(self) -> None:
         response = FakeResponse(
@@ -132,3 +141,19 @@ class MatchTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+    def test_main_exits_when_nothing_matched(self) -> None:
+        df = pd.DataFrame([{"lat": 21.0, "lon": 105.0}, {"lat": 21.1, "lon": 105.1}])
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            input_csv = Path(tmpdir) / "in.csv"
+            output_csv = Path(tmpdir) / "out.csv"
+            df.to_csv(input_csv, index=False)
+
+            with (
+                mock.patch("scripts.match.get_matched_pair", return_value=None),
+                self.assertRaises(SystemExit),
+            ):
+                match.main(str(input_csv), str(output_csv))
+
+            self.assertFalse(output_csv.exists())
