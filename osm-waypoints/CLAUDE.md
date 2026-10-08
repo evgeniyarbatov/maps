@@ -18,7 +18,7 @@ Five Makefile steps, run in order:
 4. `render-map` — plot validated POIs on a contextily basemap, write `$DATA_DIR/waypoints.png`
 5. `export-gpx` — write `$DATA_DIR/waypoints.gpx` with Garmin symbols and ASCII names
 
-`DATA_DIR` defaults to `~/data/osm-waypoints` (`$DATA_ROOT/<repo-name>`); override with `DATA_ROOT=` or `DATA_DIR=`.
+`DATA_DIR` defaults to `~/Documents/data/osm-waypoints` (`$DATA_ROOT/<repo-name>`); override with `DATA_ROOT=` or `DATA_DIR=`.
 
 Run everything: `make all GPX_DIR=/path/to/gpx`
 
@@ -57,7 +57,7 @@ Environment variables (also exported by Makefile):
 | `OLLAMA_MODEL` | `mistral-nemo` | Pulled automatically if missing |
 | `OLLAMA_URL` | `http://localhost:11434` | |
 | `MAP_DPI` | `300` | |
-| `DATA_DIR` | `~/data/osm-waypoints` | All generated osm/ and data/ outputs |
+| `DATA_DIR` | `~/Documents/data/osm-waypoints` | All generated osm/ and data/ outputs |
 
 ## Implementation notes
 

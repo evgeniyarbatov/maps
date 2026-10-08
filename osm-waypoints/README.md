@@ -49,7 +49,7 @@ Each step is a separate Makefile target.
 | 5. Map render | `make render-map` | `$DATA_DIR/waypoints.png` — high-res contextily basemap |
 | 6. GPX export | `make export-gpx` | `$DATA_DIR/waypoints.gpx` — Garmin waypoints with per-type icons and ASCII names |
 
-`DATA_DIR` defaults to `~/data/osm-waypoints`; see [Outputs](#outputs) for how to override it.
+`DATA_DIR` defaults to `~/Documents/data/osm-waypoints`; see [Outputs](#outputs) for how to override it.
 
 ### Run step by step
 
@@ -82,7 +82,7 @@ make export-gpx
 | `OLLAMA_MODEL` | `mistral-nemo` | Ollama model for validation and descriptions |
 | `OLLAMA_URL` | `http://localhost:11434` | Ollama API endpoint |
 | `MAP_DPI` | `300` | Map image resolution |
-| `DATA_DIR` | `~/data/osm-waypoints` | Where all generated osm/ and data/ outputs are written |
+| `DATA_DIR` | `~/Documents/data/osm-waypoints` | Where all generated osm/ and data/ outputs are written |
 
 ```bash
 make all GPX_DIR=~/Documents/gpx/my-trail BUFFER_KM=0.5
@@ -90,7 +90,7 @@ make all GPX_DIR=~/Documents/gpx/my-trail BUFFER_KM=0.5
 
 ## Outputs
 
-All generated files go under `DATA_DIR`, which defaults to `~/data/osm-waypoints` (`$DATA_ROOT/<repo-name>`, `DATA_ROOT` defaults to `~/data`). Override per run with `make <target> DATA_DIR=/tmp/run` or `make <target> DATA_ROOT=/path/to/shared`.
+All generated files go under `DATA_DIR`, which defaults to `~/Documents/data/osm-waypoints` (`$DATA_ROOT/<repo-name>`, `DATA_ROOT` defaults to `~/Documents/data`). Override per run with `make <target> DATA_DIR=/tmp/run` or `make <target> DATA_ROOT=/path/to/shared`.
 
 ```
 $DATA_DIR/
