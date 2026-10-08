@@ -1,14 +1,6 @@
 # OSM Way Width
 
-These scripts use multiple polylines from Strava running activies to estimate width of a single OSM way.
-
-## Estimated Width (~11 meters)
-
-<img width="2400" height="808" alt="estimated width" src="https://github.com/user-attachments/assets/23adc72e-b62c-4ec4-981c-2b121b83ff19" />
-
-## Actual Width (13 meters)
-
-<img width="1538" height="841" alt="actual width" src="https://github.com/user-attachments/assets/8ea5b3b4-e8fc-4039-9639-093057240b4a" />
+These scripts use multiple polylines from Strava running activies to estimate width of a single OSM way (e.g. ~11 m estimated vs 13 m actual).
 
 ## How to Run
 

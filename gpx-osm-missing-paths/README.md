@@ -1,10 +1,6 @@
 # gpx-osm-missing-paths
 
-[![tests](https://github.com/evgeniyarbatov/gpx-osm-missing-paths/actions/workflows/tests.yml/badge.svg)](https://github.com/evgeniyarbatov/gpx-osm-missing-paths/actions/workflows/tests.yml)
-
 Find footpaths, alleys and shortcuts you keep running that are missing from OpenStreetMap, and get a JOSM-ready bundle for each one. Fully local after the OSM extract is cached.
-
-<img width="2899" height="1493" alt="josm" src="https://github.com/user-attachments/assets/5abbff1c-e685-4fa4-8e80-fe345154dd93" />
 
 Traces of the same physical path are clustered, checked against existing OSM ways, named after nearby landmarks, and exported as a small `.osm` of the 50m surroundings plus every GPX that covers it.
 
