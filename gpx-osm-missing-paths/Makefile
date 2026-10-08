@@ -35,7 +35,7 @@ CITY_OSM := $(OSM_DIR)/$(CITY).osm
 	gpx process cluster filter-missing name extract pipeline \
 	clean test lint
 
-# Raw GPX source: github.com/evgeniyarbatov/gpx-data, per-city GeoParquet exports.
+# Raw GPX source: the GeoParquet export repo set by GPX_DATA_REPO_URL in .env.
 # Optional LAT/LON/RADIUS_KM narrows `make gpx` to tracks near one point.
 
 help: ## Show this help
