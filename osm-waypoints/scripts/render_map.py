@@ -80,7 +80,13 @@ def main() -> int:
     ax.set_ylim(miny - pad_y, maxy + pad_y)
     ax.set_axis_off()
 
-    cx.add_basemap(ax, source=cx.providers.OpenStreetMap.Mapnik, zoom="auto")
+    # OSM tile servers block contextily's default random User-Agent.
+    cx.add_basemap(
+        ax,
+        source=cx.providers.OpenStreetMap.Mapnik,
+        zoom="auto",
+        headers={"User-Agent": "osm-waypoints/1.0 (+https://github.com/evgeniyarbatov)"},
+    )
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     fig.savefig(MAP_IMAGE, bbox_inches="tight", pad_inches=0.1, facecolor="white")
