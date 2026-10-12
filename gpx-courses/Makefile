@@ -1,5 +1,5 @@
 # Uses uv (https://docs.astral.sh/uv) for dependency management — uv sync creates/updates .venv; run commands via uv run, no manual activation.
-DATA_ROOT ?= $(HOME)/data
+DATA_ROOT ?= $(HOME)/Documents/data
 REPO_NAME := $(notdir $(CURDIR))
 DATA_DIR  ?= $(DATA_ROOT)/$(REPO_NAME)
 
@@ -180,7 +180,7 @@ help:
 	@echo "brew-deps       - install Homebrew deps from Brewfile"
 	@echo "lock            - refresh uv.lock"
 	@echo "test            - run unit tests"
-	@echo "clean/clean-data - clear \$$(DATA_DIR) (default: ~/data/gpx-courses)"
+	@echo "clean/clean-data - clear \$$(DATA_DIR) (default: ~/Documents/data/gpx-courses)"
 	@echo "clean-data-gpx  - clear *.gpx files in \$$(DATA_DIR)"
 	@echo "country         - one-time download of country OSM PBF"
 	@echo "plotgpx GPX_DIR=... - plot original GPX"
@@ -194,5 +194,5 @@ help:
 	@echo "course NAME=... - match + filter + trip + gpx"
 	@echo "run GPX_DIR=... NAME=... - entry point: parse + docker + course (after one-time 'make country')"
 	@echo ""
-	@echo "Generated data goes to \$$(DATA_DIR), default ~/data/gpx-courses."
+	@echo "Generated data goes to \$$(DATA_DIR), default ~/Documents/data/gpx-courses."
 	@echo "Override with DATA_ROOT=/path (keeps repo-name suffix) or DATA_DIR=/exact/path."

@@ -16,13 +16,13 @@ Builds a clean course GPX from raw activity traces: simplify source GPX → clip
 - `make course NAME="Ba Vi"` — runs `match → filter → trip → gpx`
 - `make run GPX_DIR=/path/to/gpx NAME="Ba Vi"` — entry point: `parse → docker → course` (after one-time `make country`)
 - `make clean-data` / `make clean-data-gpx` — clear `$(DATA_DIR)` (all generated files, or just `*.gpx`)
-- `DATA_DIR` — where all generated files (and the clipped `osm/` extract) go, default `~/data/gpx-courses`; override with `DATA_ROOT=` or `DATA_DIR=`
+- `DATA_DIR` — where all generated files (and the clipped `osm/` extract) go, default `~/Documents/data/gpx-courses`; override with `DATA_ROOT=` or `DATA_DIR=`
 
 Full end-to-end sequence and prerequisites are in README.md.
 
 ## Architecture
 
-Each pipeline stage is a standalone script in `scripts/`, wired together by Makefile targets, communicating via files under `$(DATA_DIR)` (CSV/GPX/poly/jpeg) rather than function calls. There's no orchestration layer — the Makefile *is* the pipeline DAG (`parse` and `course` are the two composite targets). `$(DATA_DIR)` defaults to `~/data/gpx-courses`, outside the repo working tree; scripts themselves default to `data/...` when run standalone without Makefile-supplied paths.
+Each pipeline stage is a standalone script in `scripts/`, wired together by Makefile targets, communicating via files under `$(DATA_DIR)` (CSV/GPX/poly/jpeg) rather than function calls. There's no orchestration layer — the Makefile *is* the pipeline DAG (`parse` and `course` are the two composite targets). `$(DATA_DIR)` defaults to `~/Documents/data/gpx-courses`, outside the repo working tree; scripts themselves default to `data/...` when run standalone without Makefile-supplied paths.
 
 Stage flow and contracts:
 1. `compress.py` / `extract.py` — read raw GPX dir → `$(DATA_DIR)/gpx_compressed`, flattened `$(DATA_DIR)/gpx.csv` (lat/lon points)

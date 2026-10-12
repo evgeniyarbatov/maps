@@ -15,7 +15,7 @@ Build a clean course GPX from raw activity traces by:
 ## Key Makefile variables
 - `GPX_DIR` (required for `make plotgpx` and `make parse`)
 - `NAME` (required for `make gpx` / `make course`)
-- `DATA_DIR` — where all generated files go, default `~/data/gpx-courses`. Override the whole path with `DATA_DIR=/tmp/run-42`, or just the root with `DATA_ROOT=/path` (keeps the `gpx-courses` suffix).
+- `DATA_DIR` — where all generated files go, default `~/Documents/data/gpx-courses`. Override the whole path with `DATA_DIR=/tmp/run-42`, or just the root with `DATA_ROOT=/path` (keeps the `gpx-courses` suffix).
 
 Example override:
 `make parse GPX_DIR=$HOME/Documents/gpx/bavi`
@@ -41,7 +41,7 @@ Optional filter tuning (script-level):
 `./.venv/bin/python scripts/filter.py $DATA_DIR/osm-gpx.csv $DATA_DIR/filtered-osm-gpx.csv --distance-meters 80 --max-points 500 --center-mode median`
 
 ## Generated data
-All pipeline outputs and the clipped `osm/` extract are written under `$(DATA_DIR)`, default `~/data/gpx-courses` — nothing is written inside the repo working tree. Override per-invocation with `make <target> DATA_ROOT=/path` (keeps the `gpx-courses` suffix) or `make <target> DATA_DIR=/exact/path`.
+All pipeline outputs and the clipped `osm/` extract are written under `$(DATA_DIR)`, default `~/Documents/data/gpx-courses` — nothing is written inside the repo working tree. Override per-invocation with `make <target> DATA_ROOT=/path` (keeps the `gpx-courses` suffix) or `make <target> DATA_DIR=/exact/path`.
 
 ## Makefile target map
 - `make parse`: runs `compress -> extract -> boundary -> osmextract`
@@ -51,7 +51,7 @@ All pipeline outputs and the clipped `osm/` extract are written under `$(DATA_DI
 - `make plotgpx`: plots raw GPX files from `GPX_DIR` into `$(DATA_DIR)/original-gpx.jpeg`
 
 ## Main outputs
-All paths below are relative to `$(DATA_DIR)` (default `~/data/gpx-courses`):
+All paths below are relative to `$(DATA_DIR)` (default `~/Documents/data/gpx-courses`):
 - `gpx.csv`: flattened points from compressed source GPX files
 - `boundary.poly`: buffered convex hull used for OSM clipping
 - `osm-gpx.csv`: matched points with OSM way IDs
