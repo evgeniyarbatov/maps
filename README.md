@@ -37,6 +37,18 @@ GPX tracks, geotagged photos ──► gpx-map, photo-map ──► on the map
 | [gpx-map/](gpx-map) | Displays GPX track segments on a map, with notebooks and video export | `make run` |
 | [photo-map/](photo-map) | Finds geotagged photos on a map | `make extract-photos run` |
 
+## Status
+
+| Folder | Status | Last touched | Next step |
+|---|---|---|---|
+| gpx-courses | active | 2026-10-08 | — |
+| gpx-osm-missing-paths | active | 2026-10-08 | Record each bundle's review outcome in reviewed.json |
+| osm-way-width | parked | 2026-07-30 | — |
+| osm-waypoints | active | 2026-10-08 | — |
+| vibe-mapping | active | 2026-10-08 | — |
+| gpx-map | active | 2026-10-06 | — |
+| photo-map | parked | 2026-07-22 | — |
+
 ## Getting started
 
 Each folder is a standalone project with its own Makefile; Python folders use uv. OSM extracts and personal GPX files aren't committed: each folder's README says where to put them. `gpx-courses` needs Docker for local OSRM.
