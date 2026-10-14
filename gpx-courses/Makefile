@@ -40,7 +40,7 @@ endif
 	plotgpx compress extract boundary country osmextract docker docker-stop match filter trip gpx parse course run help
 
 install: brew-deps
-	@uv sync
+	@uv sync --all-packages
 
 brew-deps:
 	@brew bundle check --file=Brewfile >/dev/null 2>&1 || brew bundle --file=Brewfile

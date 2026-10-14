@@ -71,7 +71,7 @@ OLLAMA_URL = http://127.0.0.1:11434
 .PHONY: help install tools test country area-poly area points points-normalized area-points-kml area-cells area-vibe area-vibe-kml run lock
 
 install:
-	@uv sync
+	@uv sync --all-packages
 
 tools:
 	@command -v osmium >/dev/null || brew install osmium-tool

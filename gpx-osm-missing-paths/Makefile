@@ -50,7 +50,7 @@ setup: install ## Create venv with uv, install deps
 	@echo "✅ Setup complete. Copy env.example → .env if needed."
 
 install: ## Install/update deps only
-	uv sync --extra dev
+	uv sync --all-packages --extra dev
 
 # --- Shared country PBF (dotfiles fetch-osm; no parallel download flow) ---
 
