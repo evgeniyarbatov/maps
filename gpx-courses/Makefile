@@ -3,8 +3,6 @@ DATA_ROOT ?= $(HOME)/Documents/data
 REPO_NAME := $(notdir $(CURDIR))
 DATA_DIR  ?= $(DATA_ROOT)/$(REPO_NAME)
 
-VENV_PATH := .venv
-
 GPX_DIR ?=
 NAME ?=
 
@@ -20,6 +18,8 @@ wait-http = n=0; until curl -sg $(1) -o /dev/null "$(2)"; do \
 
 DOTFILES_MK := $(HOME)/gitRepo/dotfiles/make/osm-country.mk
 
+.DEFAULT_GOAL := help
+
 .PHONY: country osm-country-fetch
 
 ifneq ($(wildcard $(DOTFILES_MK)),)
@@ -34,12 +34,12 @@ country osm-country-fetch:
 endif
 
 .PHONY: \
-	install brew-deps lock test \
-	clean clean-data clean-data-gpx \
+	setup brew-deps lock test \
+	clean-data clean-data-gpx \
 	gpx-input-check \
 	plotgpx compress extract boundary country osmextract docker docker-stop match filter trip gpx parse course run help
 
-install: brew-deps
+setup: brew-deps
 	@uv sync --all-packages
 
 brew-deps:
@@ -48,10 +48,8 @@ brew-deps:
 lock:
 	@uv lock
 
-test: install
+test: setup
 	@uv run python -m unittest discover -s tests -p "test_*.py" -v
-
-clean: clean-data
 
 clean-data:
 	@[ -d "$(DATA_DIR)" ] && find $(DATA_DIR) -mindepth 1 -delete || true
@@ -64,17 +62,17 @@ gpx-input-check:
 	@test -n "$(strip $(GPX_DIR))" || (echo "Error: GPX_DIR is required. Example: make parse GPX_DIR=/path/to/gpx-dir" >&2; exit 1)
 	@test -d "$(GPX_DIR)" || (echo "Error: GPX_DIR does not exist: $(GPX_DIR)" >&2; exit 1)
 
-plotgpx: install gpx-input-check
+plotgpx: setup gpx-input-check
 	@mkdir -p $(DATA_DIR)
 	@uv run python scripts/plotgpx.py \
 	$(GPX_DIR) \
 	"Original GPX" \
 	$(DATA_DIR)/original-gpx.jpeg
 
-compress: install gpx-input-check clean-data-gpx
+compress: setup gpx-input-check clean-data-gpx
 	@uv run python scripts/compress.py "$(GPX_DIR)" --output-dir $(DATA_DIR)/gpx_compressed
 
-extract: install
+extract: setup
 	@mkdir -p $(DATA_DIR)
 	@uv run python scripts/extract.py $(DATA_DIR)/gpx_compressed $(DATA_DIR)/gpx.csv
 	@uv run python scripts/plotgpx.py \
@@ -82,7 +80,7 @@ extract: install
 	"Simplified GPX" \
 	$(DATA_DIR)/simplified-gpx.jpeg
 
-boundary: install
+boundary: setup
 	@mkdir -p $(DATA_DIR)
 	@uv run python scripts/boundary.py $(DATA_DIR)/gpx.csv $(DATA_DIR)/boundary.poly
 
@@ -115,7 +113,7 @@ docker-stop:
 		colima nerdctl -- compose down --remove-orphans; \
 	fi
 
-match: install
+match: setup
 	@echo "Matching..."
 	@mkdir -p $(DATA_DIR)
 	@uv run python scripts/match.py $(DATA_DIR)/gpx.csv $(DATA_DIR)/osm-gpx.csv
@@ -124,7 +122,7 @@ match: install
 	"OSRM-Matched Points with OSM Way IDs" \
 	$(DATA_DIR)/osm-match.jpeg
 
-filter: install
+filter: setup
 	@echo "Filtering..."
 	@mkdir -p $(DATA_DIR)
 	@uv run python scripts/filter.py $(DATA_DIR)/osm-gpx.csv $(DATA_DIR)/filtered-osm-gpx.csv
@@ -133,7 +131,7 @@ filter: install
 	"Center-Distance Filtered Match Points" \
 	$(DATA_DIR)/osm-filter.jpeg
 
-trip: install
+trip: setup
 	@echo "Making trip..."
 	@mkdir -p $(DATA_DIR)
 	@uv run python scripts/trip.py $(DATA_DIR)/filtered-osm-gpx.csv $(DATA_DIR)/trip.csv
@@ -142,7 +140,7 @@ trip: install
 	"OSRM Trip Route (CSV Output)" \
 	$(DATA_DIR)/trip-gpx.jpeg
 
-gpx: install
+gpx: setup
 	@test -n "$(strip $(NAME))" || (echo "Error: NAME is required. Example: make gpx NAME=\"Soc Son\"" >&2; exit 1)
 	@echo "Writing GPX..."
 	@mkdir -p $(DATA_DIR)
@@ -176,11 +174,10 @@ run: parse docker course
 	@echo "Run complete."
 
 help:
-	@echo "install         - brew-deps + uv sync deps"
+	@echo "setup           - brew-deps + uv sync deps"
 	@echo "brew-deps       - install Homebrew deps from Brewfile"
 	@echo "lock            - refresh uv.lock"
 	@echo "test            - run unit tests"
-	@echo "clean/clean-data - clear \$$(DATA_DIR) (default: ~/Documents/data/gpx-courses)"
 	@echo "clean-data-gpx  - clear *.gpx files in \$$(DATA_DIR)"
 	@echo "country         - one-time download of country OSM PBF"
 	@echo "plotgpx GPX_DIR=... - plot original GPX"

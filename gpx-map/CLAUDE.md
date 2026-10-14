@@ -26,4 +26,3 @@ Renders a GPX track on an interactive OpenLayers map (`public/index.html` + `pub
 
 - Two dependency stacks: Node (npm, the app + screenshot tests) and Python/uv (segmenting).
 - Generated videos go outside the repo to `$DATA_DIR/video` (default `~/Documents/data/gpx-map/video`).
-- `make clean` removes screenshot images, generated video, and `.venv`.

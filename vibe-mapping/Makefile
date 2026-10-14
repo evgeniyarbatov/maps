@@ -11,6 +11,8 @@ DOTFILES_MK := $(HOME)/gitRepo/dotfiles/make/osm-country.mk
 # Set before including DOTFILES_MK, which only does OSM_DIR ?=.
 OSM_DIR := $(DATA_DIR)/osm
 
+.DEFAULT_GOAL := help
+
 .PHONY: country osm-country-fetch
 
 ifneq ($(wildcard $(DOTFILES_MK)),)
@@ -68,18 +70,18 @@ endif
 OLLAMA_MODEL = mistral-nemo
 OLLAMA_URL = http://127.0.0.1:11434
 
-.PHONY: help install tools test country area-poly area points points-normalized area-points-kml area-cells area-vibe area-vibe-kml run lock
+.PHONY: help setup tools test country area-poly area points points-normalized area-points-kml area-cells area-vibe area-vibe-kml run lock
 
-install:
+setup:
 	@uv sync --all-packages
 
 tools:
 	@command -v osmium >/dev/null || brew install osmium-tool
 
-test: install
+test: setup
 	@uv run python -m unittest discover -s tests -p 'test_*.py'
 
-area-poly: install
+area-poly: setup
 	@mkdir -p $(RUN_DIR)
 ifdef GPX
 	@uv run python scripts/get-track-area.py \
@@ -103,36 +105,36 @@ area: tools area-poly
 		--overwrite \
 		-o $(RUN_DIR)/area.osm
 
-points: install area
+points: setup area
 	@uv run python scripts/get-points.py \
 	$(RUN_DIR)/area.osm \
 	$(POINTS);
 
-points-normalized: install points
+points-normalized: setup points
 	@uv run python scripts/normalize-area-points.py \
 	$(POINTS) \
 	$(POINTS_NORMALIZED);
 
-area-points-kml: install points-normalized
+area-points-kml: setup points-normalized
 	@uv run python scripts/build-area-points-kml.py \
 	$(POINTS_NORMALIZED) \
 	$(AREA_POINTS_KML);
 
-area-cells: install points-normalized
+area-cells: setup points-normalized
 	@uv run python scripts/build-area-cells.py \
 	--resolution $(H3_RESOLUTION) \
 	$(CELL_FILTER_ARGS) \
 	$(POINTS_NORMALIZED) \
 	$(AREA_CELLS);
 
-area-vibe: install
+area-vibe: setup
 	@uv run python scripts/build-area-vibe.py \
 	--model $(OLLAMA_MODEL) \
 	--ollama-url $(OLLAMA_URL) \
 	$(AREA_CELLS) \
 	$(AREA_VIBE);
 
-area-vibe-kml: install
+area-vibe-kml: setup
 	@uv run python scripts/build-area-vibe-kml.py \
 	--area-cells-csv $(AREA_CELLS) \
 	$(VIBE_KML_ARGS) \
@@ -148,7 +150,7 @@ run: area points-normalized area-points-kml area-cells area-vibe area-vibe-kml
 	@echo "Run complete."
 
 help:
-	@echo "install           - uv sync"
+	@echo "setup             - uv sync"
 	@echo "tools             - install osmium CLI via Homebrew if missing"
 	@echo "test              - run unit tests"
 	@echo "area-poly         - clip polygon: GPX track bbox (GPX=<file>) or circle around START_LAT/LON"

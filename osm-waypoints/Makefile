@@ -16,6 +16,8 @@ OSM_URL = https://download.geofabrik.de/asia/vietnam-latest.osm.pbf
 DOTFILES_MK := $(HOME)/gitRepo/dotfiles/make/osm-country.mk
 OSM_DIR := $(DATA_DIR)/osm
 
+.DEFAULT_GOAL := help
+
 .PHONY: country osm-country-fetch
 
 ifneq ($(wildcard $(DOTFILES_MK)),)
@@ -33,9 +35,9 @@ SCRIPTS_DIR = scripts
 
 export GPX_DIR BUFFER_KM OLLAMA_MODEL OLLAMA_URL MAP_DPI DATA_DIR OSM_DIR
 
-.PHONY: install brew-deps lock test country extract-osm extract-pois validate-pois describe-pois render-map export-gpx all clean help
+.PHONY: setup brew-deps lock test country extract-osm extract-pois validate-pois describe-pois render-map export-gpx all help
 
-install:
+setup:
 	@uv sync --all-packages
 
 brew-deps:
@@ -48,32 +50,27 @@ brew-deps:
 lock:
 	@uv lock
 
-test: install
+test: setup
 	@PYTHONPATH=$(SCRIPTS_DIR) uv run python -m unittest discover -s tests -p 'test_*.py' -v
 
-extract-osm: install brew-deps country
+extract-osm: setup brew-deps country
 	@cd $(SCRIPTS_DIR) && PYTHONUNBUFFERED=1 uv run python extract_osm.py
 
-extract-pois: install extract-osm
+extract-pois: setup extract-osm
 	@cd $(SCRIPTS_DIR) && uv run python extract_pois.py
-validate-pois: install extract-pois
+validate-pois: setup extract-pois
 	@cd $(SCRIPTS_DIR) && uv run python validate_pois.py
-describe-pois: install validate-pois
+describe-pois: setup validate-pois
 	@cd $(SCRIPTS_DIR) && uv run python describe_pois.py
-render-map: install describe-pois
+render-map: setup describe-pois
 	@cd $(SCRIPTS_DIR) && uv run python render_map.py
-export-gpx: install describe-pois
+export-gpx: setup describe-pois
 	@cd $(SCRIPTS_DIR) && uv run python export_gpx.py
 all: export-gpx render-map
 
-clean:
-	@rm -f $(OSM_DIR)/extract.osm $(OSM_DIR)/extract-polygon.geojson
-	@rm -f $(DATA_DIR)/pois.json $(DATA_DIR)/pois_validated.json
-	@rm -f $(DATA_DIR)/waypoints.png $(DATA_DIR)/waypoints.gpx
-	@rm -rf .venv
-
 help:
-	@echo "install       - uv sync"
+	@echo "run           - full waypoints extraction pipeline"
+	@echo "setup         - uv sync"
 	@echo "brew-deps     - install/check Homebrew deps (osmium-tool, ollama)"
 	@echo "lock          - refresh uv.lock"
 	@echo "test          - run unit tests"
@@ -85,7 +82,6 @@ help:
 	@echo "render-map    - render $(DATA_DIR)/waypoints.png"
 	@echo "export-gpx    - export $(DATA_DIR)/waypoints.gpx"
 	@echo "all           - export-gpx render-map"
-	@echo "clean         - remove generated osm/data outputs and .venv"
 
 # Entry point: full waypoints extraction pipeline.
 run: all

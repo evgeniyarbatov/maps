@@ -15,7 +15,7 @@
 
 ## `osmium: command not found`
 
-`make city` installs `osmium-tool` via Homebrew automatically (`make deps`). Manually:
+`make city` installs `osmium-tool` via Homebrew automatically (`make setup`). Manually:
 `brew install osmium-tool`. It's a required host tool; there is no pure-Python fallback
 (per project philosophy: pragmatic and local-first, not another dependency to vendor).
 

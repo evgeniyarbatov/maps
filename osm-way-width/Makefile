@@ -13,6 +13,8 @@ DOTFILES_MK := $(HOME)/gitRepo/dotfiles/make/osm-country.mk
 # Set before the include: osm-country.mk only does `OSM_DIR ?=`.
 OSM_DIR := $(DATA_DIR)/osm
 
+.DEFAULT_GOAL := help
+
 .PHONY: country osm-country-fetch
 
 ifneq ($(wildcard $(DOTFILES_MK)),)
@@ -39,9 +41,9 @@ SEGMENT_LENGTH = 10
 WIDTH_SEGMENTS = $(DATA_DIR)/width_segments.csv
 WIDTH_SEGMENTS_PNG = $(DATA_DIR)/width_segments.png
 
-.PHONY: install lock area way width segments test run help
+.PHONY: setup lock area way width segments test run help
 
-install:
+setup:
 	@uv sync --all-packages
 
 lock:
@@ -51,16 +53,16 @@ area:
 	@osmconvert $(OSM_DIR)/$(COUNTRY_OSM_FILE) -B=$(BOUNDARY_POLY) -o=$(OSM_DIR)/times-city.osm.pbf
 	@osmium cat --overwrite $(OSM_DIR)/times-city.osm.pbf -o $(OSM_DIR)/times-city.osm
 
-way: install
+way: setup
 	@$(PYTHON) scripts/extract_way_segment.py $(OSM_DIR)/times-city.osm $(OSM_DIR)/way.osm $(WAY_ID) $(WAY_START_NODE) $(WAY_END_NODE)
 
-width: install
+width: setup
 	@$(PYTHON) scripts/estimate_way_width.py $(OSM_DIR)/way.osm $(POLYLINE_DIR)
 
-segments: install
+segments: setup
 	@$(PYTHON) scripts/segment_way_width.py $(OSM_DIR)/way.osm $(POLYLINE_DIR) $(WIDTH_SEGMENTS) $(WIDTH_SEGMENTS_PNG) $(SEGMENT_LENGTH)
 
-test: install
+test: setup
 	@$(PYTHON) -m unittest discover -s tests
 
 # Entry point: full pipeline (assumes `make country` was already run once).
@@ -69,7 +71,7 @@ run: area way segments
 	@echo "Run complete."
 
 help:
-	@echo "install   - uv sync (create/update .venv and install deps)"
+	@echo "setup     - uv sync (create/update .venv and install deps)"
 	@echo "lock      - uv lock (refresh uv.lock)"
 	@echo "area      - clip OSM extract to the boundary polygon"
 	@echo "way       - extract a single way segment"

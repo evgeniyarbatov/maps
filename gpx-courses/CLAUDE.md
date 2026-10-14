@@ -8,7 +8,7 @@ Builds a clean course GPX from raw activity traces: simplify source GPX → clip
 
 ## Commands
 
-- `make install` — `brew bundle` system deps from `Brewfile`, then `uv sync`
+- `make setup` — `brew bundle` system deps from `Brewfile`, then `uv sync`
 - `make test` — `unittest discover -s tests -p "test_*.py"`; run a single test with `.venv/bin/python -m unittest tests.test_trip.TestTrip.test_name`
 - `make country` — one-time download of the country OSM PBF (`OSM_URL` in Makefile)
 - `make parse GPX_DIR=/path/to/gpx` — runs `compress → extract → boundary → osmextract`

@@ -100,12 +100,11 @@ All generated outputs live under `$DATA_DIR` (outside the repo by default), not 
 ## Common commands
 
 ```bash
-make install
+make setup
 make extract-osm GPX_DIR=/path/to/gpx
 make extract-pois
 make validate-pois
 make export-gpx
-make clean
 ```
 
 ## Do not

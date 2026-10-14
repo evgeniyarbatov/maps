@@ -9,7 +9,7 @@ Build a clean course GPX from raw activity traces by:
 6. exporting one or more final GPX routes.
 
 ## Prerequisites
-- Homebrew + `uv`; `make install` installs the rest from `Brewfile` (`gpsbabel`, `osmium-tool`, `wget`, `colima`)
+- Homebrew + `uv`; `make setup` installs the rest from `Brewfile` (`gpsbabel`, `osmium-tool`, `wget`, `colima`)
 - `docker` or `nerdctl` (for local OSRM + Overpass via `docker-compose.yaml`; `make docker` detects colima's active runtime and uses whichever CLI matches)
 
 ## Key Makefile variables
@@ -22,7 +22,7 @@ Example override:
 
 ## End-to-end workflow
 1. Install Python environment and dependencies:
-   `make install`
+   `make setup`
 2. Run tests:
    `make test`
 3. Download country OSM PBF once:

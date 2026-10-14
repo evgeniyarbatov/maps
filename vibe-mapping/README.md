@@ -204,7 +204,7 @@ python scripts/build-area-points-kml.py \
 Generated data is written outside the repo, under `DATA_DIR` (default `~/Documents/data/vibe-mapping/`). The country extract lives in `$(DATA_DIR)/osm/`; each run's artifacts go to `$(DATA_DIR)/<gpx-name>/` or `$(DATA_DIR)/circle/`. Override with `DATA_ROOT=`, `DATA_DIR=`, or `RUN_NAME=`.
 
 Main targets:
-- `make install`: `uv sync`
+- `make setup`: `uv sync`
 - `make tools`: install the `osmium` CLI via Homebrew if missing
 - `make test`: run all tests in `tests/`
 - `make country`: download country `.osm.pbf` (Geofabrik URL in `Makefile`)
@@ -227,6 +227,6 @@ Python packages (see `pyproject.toml`):
 - `h3`
 
 System tools:
-- `uv` — Python environment (`make install`)
+- `uv` — Python environment (`make setup`)
 - `osmium` CLI — installed by `make tools` (Homebrew)
 - local `ollama` server with `mistral-nemo` — vibe generation stage

@@ -14,7 +14,7 @@ Built for planning on-foot outings — forest paths, village strolls, scenic wal
 Install Python dependencies:
 
 ```bash
-make install
+make setup
 ```
 
 System dependencies (osmium-tool, ollama, via Homebrew) are installed separately:
@@ -30,7 +30,7 @@ The default Ollama model (`mistral-nemo`) is pulled automatically on the first `
 ## Quick start
 
 ```bash
-make install
+make setup
 make all GPX_DIR=/path/to/your/gpx/files
 ```
 
@@ -54,7 +54,7 @@ Each step is a separate Makefile target.
 ### Run step by step
 
 ```bash
-make install           # Python venv
+make setup            # Python venv
 make brew-deps         # osmium-tool, ollama
 make country          # download vietnam-latest.osm.pbf (~310 MB, once)
 make extract-osm
@@ -107,7 +107,6 @@ $DATA_DIR/
 ## Clean up
 
 ```bash
-make clean
 ```
 
 Removes generated extracts and data files; keeps the downloaded country PBF.

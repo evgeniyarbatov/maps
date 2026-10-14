@@ -5,30 +5,35 @@ DATA_DIR  ?= $(DATA_ROOT)/$(REPO_NAME)
 
 PYTHON := uv run python
 
-.PHONY: install lock lab run video clean
+.DEFAULT_GOAL := help
 
-install:
+.PHONY: help setup lock lab run test video
+
+setup:
 	@uv sync --all-packages
+	@npm install
 
 lock:
 	@uv lock
 
-lab: install
+lab: setup
 	@$(PYTHON) -m jupyter lab
 
-run:
-	@npm install
+run: setup
 	@npm run start
 
 video:
 	@test -n "$(GPX)" || (echo "usage: make video GPX=/path/to/track.gpx" >&2; exit 2)
-	@$(MAKE) install
-	@npm install
+	@$(MAKE) setup
 	@DATA_DIR="$(DATA_DIR)" ./scripts/make_video.sh "$(GPX)"
 
-clean:
-	@rm -rf tests/images/esri/*
-	@rm -rf tests/images/osm/*
-	@rm -rf $(DATA_DIR)/video/*.mp4
-	@rm -rf .venv
+test:
+	@echo "no tests defined" >&2; exit 1
 
+help:
+	@echo "setup - uv sync + npm install"
+	@echo "run   - start the map app"
+	@echo "test  - no tests defined (fails)"
+	@echo "lock  - uv lock"
+	@echo "lab   - open Jupyter Lab"
+	@echo "video - render a video for GPX=..."

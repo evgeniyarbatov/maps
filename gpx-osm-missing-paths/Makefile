@@ -1,4 +1,4 @@
-# uv: https://docs.astral.sh/uv — deps via `make setup` / `make install`, run with `uv run`
+# uv: https://docs.astral.sh/uv — deps via `make setup`, run with `uv run`
 #
 # Country OSM: shared cache from dotfiles (launchd com.arbatov.fetch-osm → ~/.cache/osm).
 # Do not re-download Geofabrik here; call fetch-osm via osm-country.mk only.
@@ -19,6 +19,8 @@ country osm-country-fetch:
 	@exit 1
 endif
 
+.DEFAULT_GOAL := help
+
 # All generated pipeline data (gpx/, output/, clusters/, city OSM clip) lives outside the
 # repo, under DATA_DIR. Committed boundary polys stay in-repo under osm/.
 DATA_ROOT ?= $(HOME)/Documents/data
@@ -31,9 +33,9 @@ CITY := $(basename $(notdir $(BOUNDARY_POLYGON)))
 CITY_OSM_PBF := $(OSM_DIR)/$(CITY).osm.pbf
 CITY_OSM := $(OSM_DIR)/$(CITY).osm
 
-.PHONY: help setup install deps country city osm-check \
+.PHONY: help setup run country city osm-check \
 	gpx process cluster filter-missing name extract pipeline \
-	clean test lint
+	test lint
 
 # Raw GPX source: the GeoParquet export repo set by GPX_DATA_REPO_URL in .env.
 # Optional LAT/LON/RADIUS_KM narrows `make gpx` to tracks near one point.
@@ -46,20 +48,16 @@ help: ## Show this help
 	@echo "Other city:   make city BOUNDARY_POLYGON=osm/other.poly"
 	@echo "Other country: make country URL=https://download.geofabrik.de/…/foo-latest.osm.pbf"
 
-setup: install ## Create venv with uv, install deps
-	@echo "✅ Setup complete. Copy env.example → .env if needed."
-
-install: ## Install/update deps only
+setup: ## Install osmium-tool (Homebrew) and the uv venv
+	@command -v osmium >/dev/null || NONINTERACTIVE=1 brew install --yes osmium-tool
 	uv sync --all-packages --extra dev
+	@echo "✅ Setup complete. Copy env.example → .env if needed."
 
 # --- Shared country PBF (dotfiles fetch-osm; no parallel download flow) ---
 
 country: osm-country-fetch ## Ensure country PBF in ~/.cache/osm (weekly launchd also refreshes)
 
-deps: ## Install osmium-tool via Homebrew if missing (macOS)
-	@command -v osmium >/dev/null || NONINTERACTIVE=1 brew install --yes osmium-tool
-
-city: deps ## Clip country PBF to BOUNDARY_POLYGON → osm/<city>.osm.pbf (+ .osm)
+city: setup ## Clip country PBF to BOUNDARY_POLYGON → osm/<city>.osm.pbf (+ .osm)
 	@test -f "$(BOUNDARY_POLYGON)" || (echo "Missing poly: $(BOUNDARY_POLYGON)" >&2; exit 1)
 	@test -f "$(COUNTRY_OSM_PATH)" || (echo "Missing country PBF: $(COUNTRY_OSM_PATH). Run: make country (or wait for launchd com.arbatov.fetch-osm)" >&2; exit 1)
 	@mkdir -p "$(OSM_DIR)"
@@ -95,11 +93,7 @@ extract: osm-check ## JOSM bundles (missing clusters only)
 
 pipeline: gpx city process cluster filter-missing name extract ## Full pipeline (fetch GPX + city clip + missing-path bundles)
 
-clean: ## Remove processed data and outputs under DATA_DIR (keep raw gpx + city polys)
-	rm -rf "$(DATA_DIR)/output"/* "$(DATA_DIR)/clusters"/* || true
-	@echo "🧹 Cleaned $(DATA_DIR)/output, $(DATA_DIR)/clusters"
-
-test: install ## Run pytest with coverage
+test: setup ## Run pytest with coverage
 	uv run pytest
 
 lint: ## Ruff + mypy
@@ -107,4 +101,4 @@ lint: ## Ruff + mypy
 	uv run mypy src
 
 # Entry point: full pipeline.
-run: pipeline
+run: pipeline ## full pipeline
