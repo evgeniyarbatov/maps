@@ -37,6 +37,12 @@ GPX tracks, geotagged photos ──► gpx-map, photo-map ──► on the map
 | [gpx-map/](gpx-map) | Displays GPX track segments on a map, with notebooks and video export | `make run` |
 | [photo-map/](photo-map) | Finds geotagged photos on a map | `make extract-photos run` |
 
+**Shared servers**
+
+| Folder | What it does | Run |
+|---|---|---|
+| [geo-stack/](geo-stack) | OSRM (foot, bicycle) and Overpass for Hanoi, Ho Chi Minh City and Singapore on fixed `localhost` ports | `make setup run` |
+
 ## Getting started
 
 Per-folder run commands, dependencies and cautions for coding agents: [AGENTS.md](AGENTS.md).

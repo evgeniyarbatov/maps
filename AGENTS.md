@@ -30,6 +30,7 @@ Each top-level folder is an independent project. Work inside one folder; `cd <fo
 | `vibe-mapping` | Per-cell urban signals and an LLM "vibe" of a place from OSM features | `make run` | `osm-country`, `ollama` |
 | `gpx-map` | Renders GPX segments on a map; notebooks and video export | `make run` (npm dev server on :3000) | `gpx` in `DATA_DIR`, npm |
 | `photo-map` | Local web app finding geotagged photos on a map | `make extract-photos INPUT_DIR=<photos>`, then `make run` | photos from photo-archive, npm |
+| `geo-stack` | Shared OSRM (foot, bicycle) for Hanoi, HCMC, Singapore on 7011–7033 and Overpass on 7080 | `make setup run` | `osm-country`, Docker |
 
 ## Cautions
 

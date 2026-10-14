@@ -1,0 +1,57 @@
+x-osrm: &osrm
+  image: &osrm-image ghcr.io/project-osrm/osrm-backend:v6.0.0
+  restart: unless-stopped
+  command: >
+    osrm-routed
+    --algorithm mld
+    --max-matching-size 20000
+    --max-viaroute-size 20000
+    --max-trip-size 20000
+    --max-table-size 20000
+    /data/region.osrm
+
+services:
+  osrm-build:
+    image: *osrm-image
+    profiles: [build]
+    volumes: ["${GEO_DATA_DIR:?run via make}/osrm:/osrm"]
+
+  hanoi-foot:
+    <<: *osrm
+    volumes: ["${GEO_DATA_DIR:?run via make}/osrm/hanoi-foot:/data:ro"]
+    ports: ["7011:5000"]
+  hanoi-bicycle:
+    <<: *osrm
+    volumes: ["${GEO_DATA_DIR:?run via make}/osrm/hanoi-bicycle:/data:ro"]
+    ports: ["7013:5000"]
+  hcmc-foot:
+    <<: *osrm
+    volumes: ["${GEO_DATA_DIR:?run via make}/osrm/hcmc-foot:/data:ro"]
+    ports: ["7021:5000"]
+  hcmc-bicycle:
+    <<: *osrm
+    volumes: ["${GEO_DATA_DIR:?run via make}/osrm/hcmc-bicycle:/data:ro"]
+    ports: ["7023:5000"]
+  singapore-foot:
+    <<: *osrm
+    volumes: ["${GEO_DATA_DIR:?run via make}/osrm/singapore-foot:/data:ro"]
+    ports: ["7031:5000"]
+  singapore-bicycle:
+    <<: *osrm
+    volumes: ["${GEO_DATA_DIR:?run via make}/osrm/singapore-bicycle:/data:ro"]
+    ports: ["7033:5000"]
+
+  overpass:
+    image: wiktorn/overpass-api:v0.7.62.11
+    restart: unless-stopped
+    volumes:
+      - ${GEO_DATA_DIR:?run via make}/overpass/cities.osm.bz2:/import/cities.osm.bz2:ro
+      - ${GEO_DATA_DIR:?run via make}/overpass/db:/db
+    ports: ["7080:80"]
+    environment:
+      OVERPASS_META: "yes"
+      OVERPASS_MODE: init
+      OVERPASS_PLANET_URL: file:///import/cities.osm.bz2
+      OVERPASS_RULES_LOAD: "10"
+      OVERPASS_ALLOW_DUPLICATE_QUERIES: "yes"
+      OVERPASS_STOP_AFTER_INIT: "false"
