@@ -39,6 +39,6 @@ GPX tracks, geotagged photos ──► gpx-map, photo-map ──► on the map
 
 ## Getting started
 
-Each folder is a standalone project with its own Makefile; Python folders use uv. OSM extracts and personal GPX files aren't committed: each folder's README says where to put them. `gpx-courses` needs Docker for local OSRM.
+Each folder is a standalone project with its own Makefile; Python folders share one uv workspace (`uv sync --all-packages` at the root). OSM extracts and personal GPX files aren't committed: each folder's README says where to put them. `gpx-courses` needs Docker for local OSRM.
 
 Related live sites are kept as their own repos: [gpx-editor](https://github.com/evgeniyarbatov/gpx-editor) and [singapore-streets](https://github.com/evgeniyarbatov/singapore-streets).

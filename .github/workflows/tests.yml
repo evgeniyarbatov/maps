@@ -3,10 +3,10 @@ name: tests
 on:
   push:
     branches: [main]
-    paths: ["gpx-courses/**", "gpx-osm-missing-paths/**", ".github/workflows/tests.yml"]
+    paths: ["gpx-courses/**", "gpx-osm-missing-paths/**", "pyproject.toml", "uv.lock", ".github/workflows/tests.yml"]
   pull_request:
     branches: [main]
-    paths: ["gpx-courses/**", "gpx-osm-missing-paths/**", ".github/workflows/tests.yml"]
+    paths: ["gpx-courses/**", "gpx-osm-missing-paths/**", "pyproject.toml", "uv.lock", ".github/workflows/tests.yml"]
 
 jobs:
   gpx-courses:

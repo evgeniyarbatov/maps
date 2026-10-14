@@ -36,7 +36,7 @@ export GPX_DIR BUFFER_KM OLLAMA_MODEL OLLAMA_URL MAP_DPI DATA_DIR OSM_DIR
 .PHONY: install brew-deps lock test country extract-osm extract-pois validate-pois describe-pois render-map export-gpx all clean help
 
 install:
-	@uv sync
+	@uv sync --all-packages
 
 brew-deps:
 	@command -v brew >/dev/null 2>&1 || { \

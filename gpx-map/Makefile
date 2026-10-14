@@ -8,7 +8,7 @@ PYTHON := uv run python
 .PHONY: install lock lab run video clean
 
 install:
-	@uv sync --dev
+	@uv sync --all-packages
 
 lock:
 	@uv lock

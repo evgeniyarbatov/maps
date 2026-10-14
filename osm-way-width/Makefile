@@ -42,7 +42,7 @@ WIDTH_SEGMENTS_PNG = $(DATA_DIR)/width_segments.png
 .PHONY: install lock area way width segments test run help
 
 install:
-	@uv sync
+	@uv sync --all-packages
 
 lock:
 	@uv lock

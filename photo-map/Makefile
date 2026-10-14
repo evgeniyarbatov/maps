@@ -9,7 +9,7 @@ default: run
 .PHONY: install lock extract-photos run test clean
 
 install:
-	@uv sync
+	@uv sync --all-packages
 	@cd $(SITE_DIR) && npm ci
 
 lock:
