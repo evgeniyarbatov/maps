@@ -25,16 +25,14 @@ Example override:
    `make setup`
 2. Run tests:
    `make test`
-3. Download country OSM PBF once:
-   `make country`
-4. Parse and prepare clipped OSM input:
+3. Parse and prepare clipped OSM input (fetches the country OSM PBF into the shared cache if missing or stale):
    `make parse GPX_DIR=$HOME/Documents/gpx/bavi`
-5. Start OSRM + Overpass services:
+4. Start OSRM + Overpass services:
    `make docker`
-6. Build final course GPX:
+5. Build final course GPX:
    `make course NAME="Ba Vi"`
 
-Steps 4-6 can be run in one go once `make country` has been done once:
+Steps 3-5 can be run in one go:
 `make run GPX_DIR=$HOME/Documents/gpx/bavi NAME="Ba Vi"`
 
 Optional filter tuning (script-level):

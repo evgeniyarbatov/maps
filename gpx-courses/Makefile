@@ -84,7 +84,7 @@ boundary: setup
 	@mkdir -p $(DATA_DIR)
 	@uv run python scripts/boundary.py $(DATA_DIR)/gpx.csv $(DATA_DIR)/boundary.poly
 
-osmextract: brew-deps
+osmextract: brew-deps country
 	@mkdir -p $(OSM_DIR)/foot $(OSM_DIR)/overpass-api
 	@osmium extract --overwrite -p $(DATA_DIR)/boundary.poly $(OSM_DIR)/$(COUNTRY_OSM_FILE) -o $(OSM_DIR)/foot/gpx.osm.pbf
 	@osmium cat --overwrite $(OSM_DIR)/foot/gpx.osm.pbf -o $(OSM_DIR)/gpx.osm
@@ -168,7 +168,7 @@ parse: compress extract boundary osmextract
 course: match filter trip gpx
 	@echo "Course route complete."
 
-# Entry point: full pipeline (assumes `make country` was already run once).
+# Entry point: full pipeline.
 # Usage: make run GPX_DIR=/path/to/gpx-dir NAME="Course Name"
 run: parse docker course
 	@echo "Run complete."
@@ -179,7 +179,7 @@ help:
 	@echo "lock            - refresh uv.lock"
 	@echo "test            - run unit tests"
 	@echo "clean-data-gpx  - clear *.gpx files in \$$(DATA_DIR)"
-	@echo "country         - one-time download of country OSM PBF"
+	@echo "country         - fetch country OSM PBF into shared cache (skipped if fresh)"
 	@echo "plotgpx GPX_DIR=... - plot original GPX"
 	@echo "compress GPX_DIR=... - compress GPX files"
 	@echo "extract         - extract flattened GPX points"
@@ -189,7 +189,7 @@ help:
 	@echo "match/filter/trip/gpx - course pipeline stages"
 	@echo "parse           - compress + extract + boundary + osmextract"
 	@echo "course NAME=... - match + filter + trip + gpx"
-	@echo "run GPX_DIR=... NAME=... - entry point: parse + docker + course (after one-time 'make country')"
+	@echo "run GPX_DIR=... NAME=... - entry point: parse + docker + course"
 	@echo ""
 	@echo "Generated data goes to \$$(DATA_DIR), default ~/Documents/data/gpx-courses."
 	@echo "Override with DATA_ROOT=/path (keeps repo-name suffix) or DATA_DIR=/exact/path."

@@ -10,11 +10,11 @@ Builds a clean course GPX from raw activity traces: simplify source GPX → clip
 
 - `make setup` — `brew bundle` system deps from `Brewfile`, then `uv sync`
 - `make test` — `unittest discover -s tests -p "test_*.py"`; run a single test with `.venv/bin/python -m unittest tests.test_trip.TestTrip.test_name`
-- `make country` — one-time download of the country OSM PBF (`OSM_URL` in Makefile)
+- `make country` — fetch the country OSM PBF (`OSM_URL` in Makefile) into the shared cache; `osmextract` depends on it
 - `make parse GPX_DIR=/path/to/gpx` — runs `compress → extract → boundary → osmextract`
 - `make docker` — starts colima (if not already running) and brings up OSRM + Overpass via compose; detects whether colima's active runtime is `docker` or `containerd` and dispatches to `docker compose` or `colima nerdctl -- compose` accordingly
 - `make course NAME="Ba Vi"` — runs `match → filter → trip → gpx`
-- `make run GPX_DIR=/path/to/gpx NAME="Ba Vi"` — entry point: `parse → docker → course` (after one-time `make country`)
+- `make run GPX_DIR=/path/to/gpx NAME="Ba Vi"` — entry point: `parse → docker → course`
 - `make clean-data` / `make clean-data-gpx` — clear `$(DATA_DIR)` (all generated files, or just `*.gpx`)
 - `DATA_DIR` — where all generated files (and the clipped `osm/` extract) go, default `~/Documents/data/gpx-courses`; override with `DATA_ROOT=` or `DATA_DIR=`
 
