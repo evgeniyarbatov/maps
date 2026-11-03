@@ -1,10 +1,13 @@
 """Find closed footpath loops within a radius of a point; export KML + one GPX per loop."""
 
 import argparse
+import bisect
 import colorsys
 import math
 import subprocess
+from collections import defaultdict
 from collections.abc import Iterable
+from dataclasses import dataclass
 from pathlib import Path
 from xml.etree.ElementTree import Element, ElementTree, SubElement  # noqa: S405
 
@@ -19,8 +22,8 @@ RADIUS_M = 700.0
 TARGET_LENGTH_M = 883.0
 EPSILON_M = 50.0
 
-MAX_DEPTH = 100
 MAX_LOOPS = 500
+MAX_OVERLAP = 0.5
 
 FOOTPATH_HIGHWAYS = {"footway", "path", "pedestrian", "steps"}
 
@@ -63,7 +66,17 @@ def extract_footpaths(
     bbox = f"{lon - dlon},{lat - dlat},{lon + dlon},{lat + dlat}"
     clipped = out_osm.with_suffix(".pbf")
     subprocess.run(
-        ["osmium", "extract", "--overwrite", "-b", bbox, country_pbf, "-o", str(clipped)],
+        [
+            "osmium",
+            "extract",
+            "--no-progress",
+            "--overwrite",
+            "-b",
+            bbox,
+            country_pbf,
+            "-o",
+            str(clipped),
+        ],
         check=True,
     )
     highways = ",".join(sorted(FOOTPATH_HIGHWAYS))
@@ -71,6 +84,7 @@ def extract_footpaths(
         [
             "osmium",
             "tags-filter",
+            "--no-progress",
             "--overwrite",
             str(clipped),
             f"w/highway={highways}",
@@ -147,71 +161,153 @@ def prune_k_core(H: nx.Graph, k: int) -> nx.Graph:
     return core
 
 
-def canonical_cycle(cycle: list[int]) -> tuple[int, ...]:
-    i = cycle.index(min(cycle))
-    rotated = cycle[i:] + cycle[:i]
-    reversed_ = [rotated[0], *reversed(rotated[1:])]
-    return tuple(min(rotated, reversed_))
+@dataclass(frozen=True)
+class Chain:
+    """A run of degree-2 nodes between two junctions; `nodes` goes from `a` to `b`."""
+
+    a: int
+    b: int
+    length: float
+    nodes: tuple[int, ...]
+
+
+@dataclass(frozen=True)
+class HalfPath:
+    end: int
+    length: float
+    junctions: int
+    chains: int
+    steps: tuple[tuple[int, int], ...]
+
+
+def contract_chains(H: nx.Graph) -> list[Chain]:
+    junctions = {n for n, d in H.degree() if d != 2}
+    for component in nx.connected_components(H):
+        if junctions.isdisjoint(component):
+            junctions.add(min(component))
+
+    chains = []
+    walked: set[frozenset[int]] = set()
+    for a in sorted(junctions):
+        for first in sorted(H[a]):
+            if frozenset((a, first)) in walked:
+                continue
+            nodes = [a, first]
+            length = H[a][first]["length"]
+            walked.add(frozenset((a, first)))
+            while nodes[-1] not in junctions:
+                prev, cur = nodes[-2], nodes[-1]
+                nxt = next(n for n in H[cur] if n != prev)
+                walked.add(frozenset((cur, nxt)))
+                length += H[cur][nxt]["length"]
+                nodes.append(nxt)
+            chains.append(Chain(a, nodes[-1], length, tuple(nodes)))
+    return chains
+
+
+def half_paths(
+    adj: dict[int, list[tuple[int, int]]], chains: list[Chain], start: int, max_len: float
+) -> dict[int, list[HalfPath]]:
+    """Simple junction paths from `start` up to `max_len`, through junctions above `start` only."""
+    by_end: dict[int, list[HalfPath]] = defaultdict(list)
+    stack = [HalfPath(start, 0.0, 1 << start, 0, ())]
+    while stack:
+        p = stack.pop()
+        by_end[p.end].append(p)
+        for cid, v in adj[p.end]:
+            length = p.length + chains[cid].length
+            if v <= start or p.junctions >> v & 1 or length > max_len:
+                continue
+            stack.append(
+                HalfPath(
+                    v, length, p.junctions | 1 << v, p.chains | 1 << cid, (*p.steps, (cid, p.end))
+                )
+            )
+    for paths in by_end.values():
+        paths.sort(key=lambda p: p.length)
+    return by_end
+
+
+def expand(chains: list[Chain], steps: Iterable[tuple[int, int]]) -> list[int]:
+    nodes: list[int] = []
+    for cid, frm in steps:
+        chain = chains[cid].nodes
+        seq = chain if chains[cid].a == frm else chain[::-1]
+        nodes.extend(seq if not nodes else seq[1:])
+    return nodes
 
 
 def find_loops(
     H: nx.Graph,
     target_m: float,
     epsilon_m: float,
-    max_depth: int,
     max_loops: int,
+    max_overlap: float,
 ) -> list[tuple[list[int], float]]:
-    """Return simple cycles whose length is within target_m ± epsilon_m.
+    """Return up to max_loops distinct cycles within target_m ± epsilon_m, closest first.
 
-    Each cycle is found from its smallest node only (neighbours below `start` are skipped);
-    a branch is cut once its length plus the straight-line distance home exceeds the upper bound.
+    The graph is reduced to junctions joined by chains. A cycle through its lowest junction `s`
+    is split at the chain holding its midpoint: two simple half-paths from `s`, each at most half
+    the length, joined by that chain. A loop is skipped when more than max_overlap of its length
+    is shared with a loop already kept.
     """
     lo, hi = target_m - epsilon_m, target_m + epsilon_m
-    coords = {n: (d["y"], d["x"]) for n, d in H.nodes(data=True)}
-    seen: set[tuple[int, ...]] = set()
-    loops: list[tuple[list[int], float]] = []
+    raw = contract_chains(H)
+    index = {j: i for i, j in enumerate(sorted({c.a for c in raw} | {c.b for c in raw}))}
+    chains = [Chain(index[c.a], index[c.b], c.length, c.nodes) for c in raw]
+    adj: dict[int, list[tuple[int, int]]] = defaultdict(list)
+    for cid, c in enumerate(chains):
+        adj[c.a].append((cid, c.b))
+        if c.a != c.b:
+            adj[c.b].append((cid, c.a))
 
-    for start in sorted(H.nodes):
-        start_lat, start_lon = coords[start]
-        path = [start]
-        on_path = {start}
-        lengths = [0.0]
-        stack = [iter(sorted(H[start]))]
+    candidates: list[tuple[float, float, int, tuple[tuple[int, int], ...]]] = []
+    for s in range(len(index)):
+        by_end = half_paths(adj, chains, s, hi / 2)
+        for out in (p for paths in by_end.values() for p in paths):
+            for cid, v in adj[out.end]:
+                if v < s or (v != s and out.junctions >> v & 1) or out.chains >> cid & 1:
+                    continue
+                mid = chains[cid].length
+                backs = by_end.get(v, [])
+                i = bisect.bisect_left(
+                    backs, max(lo - out.length - mid, out.length - mid), key=lambda p: p.length
+                )
+                for back in backs[i:]:
+                    if back.length > hi - out.length - mid or back.length >= out.length + mid:
+                        break
+                    if out.junctions & back.junctions != 1 << s or back.chains >> cid & 1:
+                        continue
+                    first_out = out.steps[0][0] if out.steps else cid
+                    first_back = back.steps[0][0] if back.steps else cid
+                    if first_out > first_back:
+                        continue
+                    total = out.length + mid + back.length
+                    rev_back = tuple(
+                        (c, chains[c].b if chains[c].a == f else chains[c].a)
+                        for c, f in reversed(back.steps)
+                    )
+                    steps = (*out.steps, (cid, out.end), *rev_back)
+                    candidates.append(
+                        (abs(total - target_m), total, out.chains | back.chains | 1 << cid, steps)
+                    )
 
-        while stack:
-            u = path[-1]
-            v = next(stack[-1], None)
-            if v is None:
-                stack.pop()
-                on_path.discard(path.pop())
-                lengths.pop()
-                continue
-            if v < start:
-                continue
-
-            total = lengths[-1] + H[u][v]["length"]
-
-            if v == start:
-                if len(path) >= 3 and lo <= total <= hi:
-                    key = canonical_cycle(path)
-                    if key not in seen:
-                        seen.add(key)
-                        loops.append(([*path, start], total))
-                        if len(loops) >= max_loops:
-                            return loops
-                continue
-
-            if v in on_path or len(path) >= max_depth:
-                continue
-            if total + haversine_m(*coords[v], start_lat, start_lon) > hi:
-                continue
-
-            path.append(v)
-            on_path.add(v)
-            lengths.append(total)
-            stack.append(iter(sorted(H[v])))
-
-    return loops
+    candidates.sort(key=lambda c: c[0])
+    kept: list[tuple[list[int], float]] = []
+    kept_by_chain: dict[int, list[int]] = defaultdict(list)
+    for _, total, _, steps in candidates:
+        shared: dict[int, float] = defaultdict(float)
+        for cid, _ in steps:
+            for k in kept_by_chain[cid]:
+                shared[k] += chains[cid].length
+        if shared and max(shared.values()) > max_overlap * total:
+            continue
+        for cid, _ in steps:
+            kept_by_chain[cid].append(len(kept))
+        kept.append((expand(chains, steps), total))
+        if len(kept) >= max_loops:
+            break
+    return kept
 
 
 def loop_coords(H: nx.Graph, loop: Iterable[int]) -> list[tuple[float, float]]:
@@ -271,8 +367,10 @@ def main() -> None:
     parser.add_argument("--radius", type=float, default=RADIUS_M, help="metres")
     parser.add_argument("--target", type=float, default=TARGET_LENGTH_M, help="metres")
     parser.add_argument("--epsilon", type=float, default=EPSILON_M, help="metres")
-    parser.add_argument("--max-depth", type=int, default=MAX_DEPTH)
     parser.add_argument("--max-loops", type=int, default=MAX_LOOPS)
+    parser.add_argument(
+        "--max-overlap", type=float, default=MAX_OVERLAP, help="share of a loop's length"
+    )
     parser.add_argument("--out-dir", default=OUT_DIR)
     parser.add_argument("--no-k-core", action="store_true")
     args = parser.parse_args()
@@ -290,8 +388,7 @@ def main() -> None:
     if USE_K_CORE and not args.no_k_core:
         H = prune_k_core(H, K_CORE_K)
 
-    loops = find_loops(H, args.target, args.epsilon, args.max_depth, args.max_loops)
-    loops.sort(key=lambda item: abs(item[1] - args.target))
+    loops = find_loops(H, args.target, args.epsilon, args.max_loops, args.max_overlap)
     print(f"Found loops: {len(loops)}")
 
     write_kml(H, loops, args.target, str(kml_path))

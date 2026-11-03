@@ -6,7 +6,8 @@ Finds self-transcendence running loops (default 883 m, the Self-Transcendence 31
 
 ## Key files
 
-- `scripts/find_loops.py` — whole pipeline: osmium clip + footpath filter, graph build, bounded-DFS cycle search, KML/GPX export
+- `scripts/find_loops.py` — whole pipeline: osmium clip + footpath filter, graph build, chain contraction + meet-in-the-middle cycle search, KML/GPX export
+- `docs/algorithm.md` — how the cycle search works
 - `tests/test_find_loops.py` — cycle search and palette on synthetic grids
 
 ## How to run
@@ -17,5 +18,5 @@ Finds self-transcendence running loops (default 883 m, the Self-Transcendence 31
 ## Conventions / gotchas
 
 - Output lives outside the repo in `~/Documents/data/footway-loops` (`DATA_DIR`), one folder per `<lat>_<lon>_<radius>m`; nothing is written into the project.
-- The search stops at `MAX_LOOPS` before sorting, so "closest to target" is among the loops found first, not globally.
+- All candidate cycles are enumerated and held in memory before ranking, so large `RADIUS`/`EPSILON` cost memory.
 - Nodes outside the radius are dropped, so footpaths crossing the circle edge show up as skipped segments.
