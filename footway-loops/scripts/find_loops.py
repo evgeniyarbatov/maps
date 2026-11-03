@@ -21,8 +21,9 @@ RADIUS_M = 700.0
 TARGET_LENGTH_M = 883.0
 EPSILON_M = 50.0
 
-MAX_LOOPS = 500
+MAX_LOOPS = 10
 MAX_OVERLAP = 0.5
+TURN_ANGLE_DEG = 30.0
 
 # Smallest width that still returns every cycle on the 4×4 test grid.
 BEAM_WIDTH = 24
@@ -416,6 +417,37 @@ def load_park_polygons(osm_xml_path: Path) -> list[Park]:
     return parks
 
 
+def _leg_m(lat1: float, lon1: float, lat2: float, lon2: float) -> tuple[float, float]:
+    mid = math.radians((lat1 + lat2) / 2.0)
+    north = math.radians(lat2 - lat1) * EARTH_RADIUS_M
+    east = math.radians(lon2 - lon1) * EARTH_RADIUS_M * math.cos(mid)
+    return east, north
+
+
+def turn_count(H: nx.Graph, loop: Sequence[int]) -> int:
+    """Corners a runner takes. A heading change under TURN_ANGLE_DEG is not a turn."""
+    coords = [(H.nodes[node]["y"], H.nodes[node]["x"]) for node in loop[:-1]]
+    if len(coords) < 3:
+        return 0
+    turns = 0
+    count = len(coords)
+    for i in range(count):
+        lat0, lon0 = coords[(i - 1) % count]
+        lat1, lon1 = coords[i]
+        lat2, lon2 = coords[(i + 1) % count]
+        east_in, north_in = _leg_m(lat0, lon0, lat1, lon1)
+        east_out, north_out = _leg_m(lat1, lon1, lat2, lon2)
+        if east_in * east_in + north_in * north_in < 1.0:
+            continue
+        if east_out * east_out + north_out * north_out < 1.0:
+            continue
+        dot = east_in * east_out + north_in * north_out
+        cross = east_in * north_out - north_in * east_out
+        if abs(math.degrees(math.atan2(cross, dot))) >= TURN_ANGLE_DEG:
+            turns += 1
+    return turns
+
+
 def loop_in_park(H: nx.Graph, loop: Sequence[int], parks: Sequence[Park]) -> bool:
     body = loop[:-1]
     if not parks or not body:
@@ -438,8 +470,9 @@ def find_loops(
     """Return up to max_loops distinct cycles within target_m ± epsilon_m.
 
     The graph is reduced to junctions joined by chains. Cycles are grown from the lowest
-    junction with a bounded beam. Park loops come first, then closer lengths. A loop is
-    skipped when more than max_overlap of its length is shared with a loop already kept.
+    junction with a bounded beam. Fewer turns come first, then park loops, then closer
+    lengths. A loop is skipped when more than max_overlap of its length is shared with
+    a loop already kept.
     """
     lo, hi = target_m - epsilon_m, target_m + epsilon_m
     raw = contract_chains(H)
@@ -462,16 +495,18 @@ def find_loops(
         print(f"Cycle candidates: {len(found)}")
 
     park_areas = parks or ()
-    ranked: list[tuple[int, float, float, tuple[tuple[int, int], ...], list[int]]] = []
+    ranked: list[tuple[int, int, float, float, tuple[tuple[int, int], ...], list[int]]] = []
     for length, steps in found.values():
         nodes = expand(chains, steps)
         park_rank = 0 if loop_in_park(H, nodes, park_areas) else 1
-        ranked.append((park_rank, abs(length - target_m), length, steps, nodes))
-    ranked.sort(key=lambda item: (item[0], item[1], item[2]))
+        ranked.append(
+            (turn_count(H, nodes), park_rank, abs(length - target_m), length, steps, nodes)
+        )
+    ranked.sort(key=lambda item: (item[0], item[1], item[2], item[3]))
 
     kept: list[tuple[list[int], float]] = []
     kept_by_chain: dict[int, list[int]] = defaultdict(list)
-    for _, _, total, steps, nodes in ranked:
+    for _, _, _, total, steps, nodes in ranked:
         shared: dict[int, float] = defaultdict(float)
         for cid, _ in steps:
             for kept_index in kept_by_chain[cid]:
@@ -505,10 +540,13 @@ def write_kml(
         SubElement(line, "width").text = "4"
 
         pm = SubElement(doc, "Placemark")
-        SubElement(pm, "name").text = f"Loop {i + 1}: {length:.0f} m"
+        turns = turn_count(H, loop)
+        SubElement(pm, "name").text = f"Loop {i + 1}: {length:.0f} m, {turns} turns"
         SubElement(
             pm, "description"
-        ).text = f"{length:.1f} m, {len(loop) - 1} nodes, Δ {length - target_m:+.1f} m"
+        ).text = (
+            f"{length:.1f} m, {turns} turns, {len(loop) - 1} nodes, Δ {length - target_m:+.1f} m"
+        )
         SubElement(pm, "styleUrl").text = f"#{style_id}"
         ls = SubElement(pm, "LineString")
         SubElement(ls, "tessellate").text = "1"

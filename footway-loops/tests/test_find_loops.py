@@ -1,3 +1,4 @@
+import math
 import sys
 import tempfile
 import time
@@ -68,6 +69,10 @@ class FindLoopsTest(unittest.TestCase):
 
     def test_ring_without_junctions(self) -> None:
         H = with_lengths(nx.cycle_graph(10), 90.0)
+        for i, node in enumerate(H.nodes):
+            angle = 2 * math.pi * i / 10
+            H.nodes[node]["y"] = math.sin(angle) * 0.001
+            H.nodes[node]["x"] = math.cos(angle) * 0.001
         loops = fl.find_loops(H, 900.0, 10.0, 500, 1.0)
         self.assertEqual(len(loops), 1)
         self.assertTrue(is_simple_cycle(H, loops[0][0]))
@@ -96,6 +101,46 @@ class FindLoopsTest(unittest.TestCase):
             self.assertTrue(is_simple_cycle(H, loop))
             self.assertLessEqual(abs(length - 500.0), 50.0)
             self.assertAlmostEqual(path_length(H, loop), length)
+
+    def test_fewer_turns_ranks_ahead_of_a_closer_length(self) -> None:
+        H = nx.Graph()
+
+        def add_cycle(ids: list[int], coords: list[tuple[float, float]], edge_m: float) -> None:
+            for node, (lat, lon) in zip(ids, coords, strict=True):
+                H.add_node(node, y=lat, x=lon)
+            for a, b in zip(ids, [*ids[1:], ids[0]], strict=True):
+                H.add_edge(a, b, length=edge_m)
+
+        side = 0.001
+        add_cycle([1, 2, 3, 4], [(0.0, 0.0), (0.0, side), (side, side), (side, 0.0)], 200.0)
+        origin = 1.0
+        add_cycle(
+            [5, 6, 7, 8, 9, 10],
+            [
+                (origin, origin),
+                (origin, origin + side),
+                (origin + side, origin + side),
+                (origin + side, origin + 0.5 * side),
+                (origin + 2 * side, origin + 0.5 * side),
+                (origin + 2 * side, origin),
+            ],
+            880.0 / 6.0,
+        )
+        loops = fl.find_loops(H, 883.0, 100.0, 10, 1.0)
+        self.assertEqual(len(loops), 2)
+        self.assertAlmostEqual(loops[0][1], 800.0)
+        self.assertAlmostEqual(loops[1][1], 880.0)
+        self.assertEqual(fl.turn_count(H, loops[0][0]), 4)
+        self.assertEqual(fl.turn_count(H, loops[1][0]), 6)
+
+    def test_straight_shape_point_is_not_a_turn(self) -> None:
+        H = nx.Graph()
+        H.add_node(1, y=0.0, x=0.0)
+        H.add_node(2, y=0.0, x=0.001)
+        H.add_node(3, y=0.001, x=0.001)
+        H.add_node(4, y=0.001, x=0.0005)
+        H.add_node(5, y=0.001, x=0.0)
+        self.assertEqual(fl.turn_count(H, [1, 2, 3, 4, 5, 1]), 4)
 
     def test_park_loop_ranks_ahead_of_closer_street_loop(self) -> None:
         H = nx.Graph()

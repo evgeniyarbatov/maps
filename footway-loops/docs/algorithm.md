@@ -13,7 +13,7 @@ country .osm.pbf
   → undirected simple graph → 2-core
   → chain contraction (junction graph)
   → bounded beam cycle search
-  → park loops first, then |length − target|; drop overlapping loops
+  → fewest turns, then park loops, then |length − target|; drop overlapping loops
   → loops.kml + gpx/loop_NNN_<len>m.gpx
 ```
 
@@ -73,16 +73,17 @@ A loop is a park loop when at least half its nodes lie inside some park. The rep
 
 Then:
 
-1. Park loops come first. Within that, smaller `|length − TARGET|` comes first, then shorter length.
-2. Candidates are taken greedily in that order. One is dropped when more than `MAX_OVERLAP` (0.5) of **its** length lies on chains already used by any single kept loop. Overlap is measured per chain.
-3. Stop at `MAX_LOOPS` (500).
+1. Fewer turns come first. A turn is a heading change of at least `TURN_ANGLE_DEG` (30°) at a node, including the corner where the loop closes. A shallower bend, and a shape point on a straight side, does not count.
+2. Among loops with the same number of turns, park loops come first. Within that, smaller `|length − TARGET|` comes first, then shorter length.
+3. Candidates are taken greedily in that order. One is dropped when more than `MAX_OVERLAP` (0.5) of **its** length lies on chains already used by any single kept loop. Overlap is measured per chain.
+4. Stop at `MAX_LOOPS` (10). The first loop in the file is the one that won this order.
 
-A street loop that shares half its length with a kept park loop is dropped even when its length is closer to the target.
+A loop that shares half its length with a smoother one already kept is dropped, even when its length is closer to the target.
 
 ## 7. Export
 
 - Each kept loop's chain sequence is expanded back to OSM nodes (a chain is reversed when the walk enters it from its far end), starting and ending at `s`.
-- `loops.kml` has one coloured line per loop, named with its length and the delta from target. Colours step hue by the golden angle (≈137.5°) and alternate saturation/brightness so neighbouring loops look distinct.
+- `loops.kml` has one coloured line per loop, named with its length and its turn count, in rank order. Colours step hue by the golden angle (≈137.5°) and alternate saturation/brightness so neighbouring loops look distinct.
 - One GPX track per loop goes to `gpx/`, named `loop_NNN_<length>m.gpx` in rank order; previous GPX files are removed first.
 
 ## Limitations
