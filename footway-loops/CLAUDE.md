@@ -18,5 +18,5 @@ Finds self-transcendence running loops (default 883 m, the Self-Transcendence 31
 ## Conventions / gotchas
 
 - Output lives outside the repo in `~/Documents/data/footway-loops` (`DATA_DIR`), one folder per `<lat>_<lon>_<radius>m`; nothing is written into the project.
-- The beam keeps a fixed number of partial paths per junction per length band. A dense street grid returns a sample of the loops in the window.
+- The beam keeps 24 partial paths per junction in each 40 m band. A dense street grid returns a sample of the loops in the window. Park loops (at least half their nodes inside a park, garden, or recreation ground) rank ahead of other loops.
 - Nodes outside the radius are dropped, so footpaths crossing the circle edge show up as skipped segments.

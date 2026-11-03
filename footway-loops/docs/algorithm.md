@@ -6,20 +6,23 @@ The goal: find simple cycles (no repeated node) in the footpath network inside a
 
 ```
 country .osm.pbf
-  → osmium extract (bbox) → osmium tags-filter (footpaths)   footpaths.osm
+  → osmium extract (bbox)
+       → tags-filter footpaths     footpaths.osm
+       → tags-filter parks         parks.osm
   → graph of nodes inside the circle
   → undirected simple graph → 2-core
   → chain contraction (junction graph)
   → bounded beam cycle search
-  → rank park loops first, then |length − target|; drop overlapping loops
+  → park loops first, then |length − target|; drop overlapping loops
   → loops.kml + gpx/loop_NNN_<len>m.gpx
 ```
 
-## 1. Extract footpaths
+## 1. Extract
 
 - The circle's bounding box is computed from the radius (latitude span is radius / Earth radius; longitude span is widened by `1 / cos(lat)`).
-- `osmium extract -b` clips the country file to that box; `osmium tags-filter` keeps ways tagged `highway=footway|path|pedestrian|steps` plus the nodes they reference.
-- Roads, sidewalks mapped as `footway=sidewalk` on roads, tracks, cycleways etc. are not included — only the four highway values above.
+- One `osmium extract -b` clips the country file. Two `osmium tags-filter` passes read that clip, then the clip is deleted.
+- Footpaths are ways tagged `highway=footway|path|pedestrian|steps`, plus the nodes they reference. A sidewalk drawn as its own footway is included. A sidewalk that is only a tag on a road is not, and neither are tracks or cycleways.
+- Parks are ways and relations tagged `leisure=park`, `leisure=garden`, or `landuse=recreation_ground`. The filter keeps relation members, so a multipolygon's outer ways are in `parks.osm` even when those ways have no park tag.
 
 ## 2. Build the graph
 
@@ -29,7 +32,7 @@ country .osm.pbf
 
 ## 3. Prune to the 2-core
 
-The 2-core is what's left after repeatedly deleting nodes of degree < 2. A dead-end spur can never be part of a cycle, so this removes nothing a loop could use while shrinking the graph a lot (OSM footpaths are full of stubs). `--no-k-core` skips it; the search is still correct, just slower.
+The 2-core is what's left after repeatedly deleting nodes of degree < 2. A dead-end spur can never be part of a cycle, so this removes nothing a loop could use while shrinking the graph a lot (OSM footpaths are full of stubs). `--no-k-core` skips it. The spurs still cannot close a loop, but they take beam slots, so the sample of cycles can change.
 
 ## 4. Contract chains
 
@@ -38,37 +41,54 @@ Most OSM nodes are shape points with exactly two neighbours. A cycle that enters
 - A **junction** is a node with degree ≠ 2. A connected component with no junctions (a pure ring) gets its lowest node promoted to a junction so it has an anchor.
 - A **chain** is the walk from one junction through degree-2 nodes to the next junction. It stores both end junctions, total length, and the full node list so it can be expanded back later.
 - Two junctions can be joined by several parallel chains, and a chain can start and end at the same junction (a ring hanging off a junction). Chains are therefore identified by their own ID, not by their endpoints.
-- Junctions are renumbered `0..n−1`. Paths track which junctions and chains they use as bitmasks over those IDs.
+- Junctions are renumbered `0..n−1` in OSM-id order. Paths track which junctions and chains they use as bitmasks over those IDs.
 
-Every simple cycle in the original graph is now exactly a cyclic sequence of distinct chains that visits each junction at most once. The search runs on this much smaller junction multigraph.
+Every simple cycle in the original graph is now exactly a cyclic sequence of distinct chains that visits each junction at most once. The search runs on this junction multigraph.
 
 ## 5. Enumerate cycles (bounded beam)
 
-Listing every simple path up to half a lap is exponential on a sidewalk grid, where junctions sit a few tens of metres apart. The search therefore keeps at most `BEAM_WIDTH` partial paths to each junction in each `BAND_M` length band, and does not extend anything beyond that.
+`BEAM_WIDTH` is 24. `BAND_M` is 40 m.
 
-Each cycle is grown only from its **lowest-numbered junction `s`**. The walk may enter only junctions numbered above `s`, and it may not repeat a junction or a chain. A chain that returns to `s` with length inside `TARGET ± EPSILON` is recorded. The other direction uses the same chains, so the cycle is stored once, keyed by that set.
+Each cycle is grown only from its lowest-numbered junction `s`. The walk may step to `s` only to close, and it never steps to a junction numbered below `s`, so each cycle has one start. It also may not repeat a junction or a chain.
 
-The width is enough for the 4×4 grid test to match an exhaustive listing. On a dense graph the result is a sample: every returned loop is a real simple cycle in the window, and the search stops.
+From `s`, a breadth-first walk extends one chain at a time:
 
-## 6. Rank and de-duplicate
+- A partial walk longer than `TARGET + EPSILON` is not extended.
+- A chain that returns to `s` with length inside `TARGET ± EPSILON` is a cycle. It is stored under the set of its chains, so the opposite direction does not add a second copy.
+- Any other arrival is kept only while that junction has fewer than 24 partial walks in the same 40 m band (`length // 40`). Further arrivals in a full band are dropped and not extended.
 
-On a dense network many cycles differ only by a short detour, which isn't useful when picking a lap. So:
+The queue is first-in-first-out, so those 24 walks are the ones reached first. They are not the 24 shortest, and they are not picked to spread out across the map.
 
-1. A loop is a park loop when at least half its nodes lie in a `leisure=park` or `leisure=garden` polygon, or a `landuse=recreation_ground` polygon. Multipolygon holes do not count. The same circle clip supplies those polygons.
-2. Park loops come first, then `|length − TARGET|`.
-3. They're taken greedily in that order. A candidate is dropped if more than `MAX_OVERLAP` (default 0.5) of **its** length lies on chains already used by any single kept loop. Overlap is measured at chain granularity via an index from chain to kept loops.
-4. Stops at `MAX_LOOPS` (default 500) kept loops.
+Work per start is capped by junctions × length bands × 24. On the 4×4 test grid the cap is wide enough that the result matches an exhaustive cycle count. On a sidewalk grid the cap fills, and some cycles in the window are never grown. Every cycle that is returned is a real simple cycle in the window.
+
+## 6. Parks, rank, and de-duplicate
+
+Polygons are read from `parks.osm`:
+
+- A closed way with a park tag is one outer ring.
+- A relation's outer and inner ways are stitched where they share an endpoint. A member with no role counts as outer. A fragment that does not close is dropped.
+- A point is inside a park when it is inside an outer ring and outside that park's holes. The test is an even-odd ray cast.
+
+A loop is a park loop when at least half its nodes lie inside some park. The repeated closing node is not counted twice.
+
+Then:
+
+1. Park loops come first. Within that, smaller `|length − TARGET|` comes first, then shorter length.
+2. Candidates are taken greedily in that order. One is dropped when more than `MAX_OVERLAP` (0.5) of **its** length lies on chains already used by any single kept loop. Overlap is measured per chain.
+3. Stop at `MAX_LOOPS` (500).
+
+A street loop that shares half its length with a kept park loop is dropped even when its length is closer to the target.
 
 ## 7. Export
 
-- Each kept loop's chain sequence is expanded back to OSM nodes (chains reversed when walked from their far end), starting and ending at `s`.
+- Each kept loop's chain sequence is expanded back to OSM nodes (a chain is reversed when the walk enters it from its far end), starting and ending at `s`.
 - `loops.kml` has one coloured line per loop, named with its length and the delta from target. Colours step hue by the golden angle (≈137.5°) and alternate saturation/brightness so neighbouring loops look distinct.
 - One GPX track per loop goes to `gpx/`, named `loop_NNN_<length>m.gpx` in rank order; previous GPX files are removed first.
 
 ## Limitations
 
 - Lengths are straight-line distances between consecutive OSM nodes; no elevation, so real distance on steep paths is slightly longer.
-- Only simple cycles: a lap that repeats a stretch of path (e.g. an out-and-back tail) is never found.
-- On a dense graph the beam drops partial paths, so some cycles in the window are never returned.
-- A park whose boundary misses the clip is ignored. When the whole circle sits inside one park, every loop is in it and the rank does not change.
-- Results depend on how footpaths are tagged in OSM; sidewalks tagged on roads are invisible.
+- Only simple cycles: a lap that repeats a stretch of path (an out-and-back tail) is never found.
+- On a dense graph the beam drops partial walks, so some cycles in the window are never returned.
+- A park whose boundary misses the clip is ignored. When the whole circle sits inside one park, every loop is a park loop and the preference does not change the order.
+- Results depend on how footpaths are tagged in OSM. A sidewalk that was never drawn as its own way is invisible.
