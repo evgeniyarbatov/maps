@@ -12,8 +12,7 @@ import defusedxml.ElementTree as DET
 import networkx as nx
 
 COUNTRY_PBF = "data/vietnam-latest.osm.pbf"
-CENTER_LAT = 20.9947
-CENTER_LON = 105.8679
+LOCATION = "20.9947,105.8679"
 RADIUS_M = 700.0
 OUT_DIR = "data"
 
@@ -268,8 +267,7 @@ def write_gpx(H: nx.Graph, loop: list[int], length: float, name: str, path: Path
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--pbf", default=COUNTRY_PBF, help="country .osm.pbf to clip from")
-    parser.add_argument("--lat", type=float, default=CENTER_LAT)
-    parser.add_argument("--lon", type=float, default=CENTER_LON)
+    parser.add_argument("--location", default=LOCATION, help="lat,lon")
     parser.add_argument("--radius", type=float, default=RADIUS_M, help="metres")
     parser.add_argument("--target", type=float, default=TARGET_LENGTH_M, help="metres")
     parser.add_argument("--epsilon", type=float, default=EPSILON_M, help="metres")
@@ -278,15 +276,16 @@ def main() -> None:
     parser.add_argument("--out-dir", default=OUT_DIR)
     parser.add_argument("--no-k-core", action="store_true")
     args = parser.parse_args()
+    lat, lon = (float(part) for part in args.location.split(","))
 
-    out_dir = Path(args.out_dir) / f"{args.lat:.5f}_{args.lon:.5f}_{args.radius:.0f}m"
+    out_dir = Path(args.out_dir) / f"{lat:.5f}_{lon:.5f}_{args.radius:.0f}m"
     gpx_dir = out_dir / "gpx"
     gpx_dir.mkdir(parents=True, exist_ok=True)
     footpaths_osm = out_dir / "footpaths.osm"
     kml_path = out_dir / "loops.kml"
 
-    extract_footpaths(args.pbf, args.lat, args.lon, args.radius, footpaths_osm)
-    G = load_footpath_graph(footpaths_osm, args.lat, args.lon, args.radius)
+    extract_footpaths(args.pbf, lat, lon, args.radius, footpaths_osm)
+    G = load_footpath_graph(footpaths_osm, lat, lon, args.radius)
     H = to_simple_undirected(G)
     if USE_K_CORE and not args.no_k_core:
         H = prune_k_core(H, K_CORE_K)

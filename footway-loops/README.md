@@ -4,8 +4,7 @@ Finds closed walking loops of a target length (default 883 m ± 50 m) on OSM foo
 
 ## How to Run
 
-- `make country` (one-time Vietnam extract; needs `osmium`)
-- `make run LAT=20.9947 LON=105.8679` (also `RADIUS`, `TARGET`, `EPSILON`)
+- `make run LOCATION=20.99,105.8679` (also `RADIUS`, `TARGET`, `EPSILON`); fetches the Vietnam extract first if missing or stale. Needs `osmium`.
 
 Outputs go to `data/<lat>_<lon>_<radius>m/`: `footpaths.osm`, `loops.kml`, `gpx/loop_NNN_<length>m.gpx`.
 

@@ -23,8 +23,7 @@ country osm-country-fetch:
 	@exit 1
 endif
 
-LAT ?= 20.9947
-LON ?= 105.8679
+LOCATION ?= 20.9947,105.8679
 RADIUS ?= 700
 TARGET ?= 883
 EPSILON ?= 50
@@ -40,12 +39,12 @@ lock:
 test: setup
 	@$(PYTHON) -m unittest discover -s tests
 
-run: setup
-	@$(PYTHON) scripts/find_loops.py --pbf $(OSM_DIR)/$(COUNTRY_OSM_FILE) --lat $(LAT) --lon $(LON) --radius $(RADIUS) --target $(TARGET) --epsilon $(EPSILON) --out-dir $(DATA_DIR)
+run: setup country
+	@$(PYTHON) scripts/find_loops.py --pbf $(OSM_DIR)/$(COUNTRY_OSM_FILE) --location $(LOCATION) --radius $(RADIUS) --target $(TARGET) --epsilon $(EPSILON) --out-dir $(DATA_DIR)
 
 help:
 	@echo "country - fetch the country OSM extract (one-time)"
 	@echo "setup   - uv sync (create/update .venv and install deps)"
 	@echo "lock    - uv lock (refresh uv.lock)"
 	@echo "test    - run unit tests"
-	@echo "run     - loops of TARGET±EPSILON m within RADIUS m of LAT,LON -> KML + GPX"
+	@echo "run     - loops of TARGET±EPSILON m within RADIUS m of LOCATION=lat,lon -> KML + GPX"
