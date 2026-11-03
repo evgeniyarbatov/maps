@@ -33,7 +33,7 @@ wait-http = n=0; until curl -sg $(2) -o /dev/null "$(3)"; do \
 	n=$$((n+1)); [ $$n -lt $(1) ] || { echo "Timed out waiting for $(3)" >&2; exit 1; }; sleep 5; \
 	done
 
-.PHONY: help setup data run stop test
+.PHONY: help setup tools data docker-up run stop test
 
 help:
 	@echo "setup - fetch Vietnam + Singapore extracts, clip cities, build OSRM graphs and the Overpass import"
@@ -44,20 +44,25 @@ help:
 	@echo "Ports: hanoi 7011 foot / 7013 bicycle, hcmc 7021 / 7023, singapore 7031 / 7033, overpass 7080"
 	@echo "Data goes to \$$(DATA_DIR), default ~/Documents/data/geo-stack."
 
-setup:
-	@brew bundle check --file=Brewfile >/dev/null 2>&1 || brew bundle --file=Brewfile
+setup: tools
 	@$(OSM_FETCH) "$(OSM_URL)" "$(SINGAPORE_URL)"
 	@$(MAKE) --no-print-directory data
 
 data: $(INSTANCES:%=$(OSRM_DIR)/%/region.osrm.mldgr) $(OVERPASS_DIR)/cities.osm.bz2
 
+tools:
+	@brew bundle check --file=Brewfile >/dev/null 2>&1 || brew bundle --file=Brewfile
+
+docker-up: tools
+	@colima status >/dev/null 2>&1 || colima start
+
 .SECONDEXPANSION:
 
-$(CLIP_DIR)/%.osm.pbf: polygons/%.poly $$(SOURCE_$$*)
+$(CLIP_DIR)/%.osm.pbf: polygons/%.poly $$(SOURCE_$$*) | tools
 	@mkdir -p $(@D)
 	osmium extract --overwrite -p $< -o $@ $(SOURCE_$*)
 
-$(OSRM_DIR)/%/region.osrm.mldgr: $(CLIP_DIR)/$$(firstword $$(subst -, ,$$*)).osm.pbf
+$(OSRM_DIR)/%/region.osrm.mldgr: $(CLIP_DIR)/$$(firstword $$(subst -, ,$$*)).osm.pbf | docker-up
 	@mkdir -p $(@D)
 	cp $< $(@D)/region.osm.pbf
 	docker compose run --rm osrm-build sh -c '\
@@ -72,8 +77,8 @@ $(OVERPASS_DIR)/cities.osm.bz2: $(CITIES:%=$(CLIP_DIR)/%.osm.pbf)
 	osmium merge --overwrite $^ -o $@
 	rm -rf $(OVERPASS_DIR)/db
 
-run:
-	@colima status >/dev/null 2>&1 || colima start
+# Compose bind-mounts create empty placeholder dirs for missing data, so build it first.
+run: data docker-up
 	@docker compose up -d --force-recreate --remove-orphans
 	@for i in $(INSTANCES); do \
 		port=$$(docker compose port $$i 5000 | cut -d: -f2); \
