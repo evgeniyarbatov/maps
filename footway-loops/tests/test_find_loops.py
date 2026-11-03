@@ -1,4 +1,6 @@
 import sys
+import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -82,6 +84,73 @@ class FindLoopsTest(unittest.TestCase):
 
     def test_max_loops_cap(self) -> None:
         self.assertEqual(len(fl.find_loops(grid(4, 100.0), 400.0, 1.0, 3, 1.0)), 3)
+
+    def test_dense_grid_finishes_with_valid_loops(self) -> None:
+        H = grid(8, 25.0)
+        started = time.perf_counter()
+        loops = fl.find_loops(H, 500.0, 50.0, 20, 0.5)
+        self.assertLess(time.perf_counter() - started, 10.0)
+        self.assertGreater(len(loops), 0)
+        self.assertLessEqual(len(loops), 20)
+        for loop, length in loops:
+            self.assertTrue(is_simple_cycle(H, loop))
+            self.assertLessEqual(abs(length - 500.0), 50.0)
+            self.assertAlmostEqual(path_length(H, loop), length)
+
+    def test_park_loop_ranks_ahead_of_closer_street_loop(self) -> None:
+        H = nx.Graph()
+
+        def add_square(ids: list[int], coords: list[tuple[float, float]], edge_m: float) -> None:
+            for node, (lat, lon) in zip(ids, coords, strict=True):
+                H.add_node(node, y=lat, x=lon)
+            for a, b in zip(ids, [*ids[1:], ids[0]], strict=True):
+                H.add_edge(a, b, length=edge_m)
+
+        add_square([1, 2, 3, 4], [(1.0, 1.0), (1.0, 1.001), (1.001, 1.001), (1.001, 1.0)], 220.0)
+        add_square(
+            [5, 6, 7, 8],
+            [(0.001, 0.001), (0.001, 0.002), (0.002, 0.002), (0.002, 0.001)],
+            200.0,
+        )
+        plain = fl.find_loops(H, 883.0, 100.0, 10, 1.0)
+        self.assertEqual([length for _, length in plain], [880.0, 800.0])
+        ring = ((0.0, 0.0), (0.0, 0.003), (0.003, 0.003), (0.003, 0.0), (0.0, 0.0))
+        parked = fl.find_loops(H, 883.0, 100.0, 10, 1.0, [fl.Park(outers=(ring,))])
+        self.assertEqual([length for _, length in parked], [800.0, 880.0])
+
+    def test_park_hole_is_outside(self) -> None:
+        park = fl.Park(
+            outers=(((0.0, 0.0), (0.0, 3.0), (3.0, 3.0), (3.0, 0.0), (0.0, 0.0)),),
+            inners=(((1.0, 1.0), (1.0, 2.0), (2.0, 2.0), (2.0, 1.0), (1.0, 1.0)),),
+        )
+        self.assertTrue(fl.point_in_parks(0.5, 0.5, [park]))
+        self.assertFalse(fl.point_in_parks(1.5, 1.5, [park]))
+        self.assertFalse(fl.point_in_parks(4.0, 4.0, [park]))
+
+    def test_multipolygon_outers_are_stitched(self) -> None:
+        osm = """<?xml version="1.0" encoding="UTF-8"?>
+<osm version="0.6">
+  <node id="1" lat="0" lon="0"/>
+  <node id="2" lat="0" lon="2"/>
+  <node id="3" lat="2" lon="2"/>
+  <node id="4" lat="2" lon="0"/>
+  <way id="10"><nd ref="1"/><nd ref="2"/><nd ref="3"/></way>
+  <way id="11"><nd ref="3"/><nd ref="4"/><nd ref="1"/></way>
+  <relation id="99">
+    <member type="way" ref="10" role="outer"/>
+    <member type="way" ref="11" role="outer"/>
+    <tag k="type" v="multipolygon"/>
+    <tag k="leisure" v="park"/>
+  </relation>
+</osm>
+"""
+        with tempfile.NamedTemporaryFile("w", suffix=".osm") as handle:
+            handle.write(osm)
+            handle.flush()
+            parks = fl.load_park_polygons(Path(handle.name))
+        self.assertEqual(len(parks), 1)
+        self.assertTrue(fl.point_in_parks(1.0, 1.0, parks))
+        self.assertFalse(fl.point_in_parks(3.0, 3.0, parks))
 
     def test_palette_format(self) -> None:
         self.assertEqual(len(fl.KML_COLOR_PALETTE), 100)

@@ -10,9 +10,9 @@ Outputs go to `~/Documents/data/footway-loops/<lat>_<lon>_<radius>m/` (override 
 
 ## Workflow
 
-1. Clip the country extract to the circle's bounding box and keep `highway=footway|path|pedestrian|steps` ways.
+1. Clip the country extract to the circle's bounding box and keep `highway=footway|path|pedestrian|steps` ways. The same clip supplies `leisure=park|garden` and `landuse=recreation_ground` polygons.
 2. Build a graph from nodes inside the circle, collapse it to undirected (shortest parallel edge wins), and prune it to its 2-core.
-3. Contract runs of degree-2 nodes into chains between junctions, then enumerate every simple cycle within `TARGET ± EPSILON` (an exact-length loop rarely exists) by joining two half-length paths from the cycle's lowest junction.
-4. Sort by distance from the target length, drop loops that share more than half their length with a better one, keep up to `MAX_LOOPS` (500), and export.
+3. Contract runs of degree-2 nodes into chains between junctions. Search simple cycles within `TARGET ± EPSILON` with a bounded beam: a few partial paths per junction per length band, so a dense sidewalk grid finishes.
+4. Rank loops inside parks ahead of other walkable loops, then by distance from the target length. Drop loops that share more than half their length with a better one, keep up to `MAX_LOOPS` (500), and export.
 
 Details: [docs/algorithm.md](docs/algorithm.md).

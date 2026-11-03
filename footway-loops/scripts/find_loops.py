@@ -1,12 +1,11 @@
 """Find closed footpath loops within a radius of a point; export KML + one GPX per loop."""
 
 import argparse
-import bisect
 import colorsys
 import math
 import subprocess
-from collections import defaultdict
-from collections.abc import Iterable
+from collections import defaultdict, deque
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from xml.etree.ElementTree import Element, ElementTree, SubElement  # noqa: S405
@@ -25,7 +24,18 @@ EPSILON_M = 50.0
 MAX_LOOPS = 500
 MAX_OVERLAP = 0.5
 
+# Smallest width that still returns every cycle on the 4×4 test grid.
+BEAM_WIDTH = 24
+BAND_M = 40.0
+PARK_NODE_FRACTION = 0.5
+
 FOOTPATH_HIGHWAYS = {"footway", "path", "pedestrian", "steps"}
+PARK_FILTERS = (
+    "w/leisure=park,garden",
+    "w/landuse=recreation_ground",
+    "r/leisure=park,garden",
+    "r/landuse=recreation_ground",
+)
 
 USE_K_CORE = True
 K_CORE_K = 2
@@ -58,13 +68,13 @@ def haversine_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     return 2 * EARTH_RADIUS_M * math.asin(math.sqrt(a))
 
 
-def extract_footpaths(
-    country_pbf: str, lat: float, lon: float, radius_m: float, out_osm: Path
+def extract_osm(
+    country_pbf: str, lat: float, lon: float, radius_m: float, footpaths_osm: Path, parks_osm: Path
 ) -> None:
     dlat = math.degrees(radius_m / EARTH_RADIUS_M)
     dlon = dlat / math.cos(math.radians(lat))
     bbox = f"{lon - dlon},{lat - dlat},{lon + dlon},{lat + dlat}"
-    clipped = out_osm.with_suffix(".pbf")
+    clipped = footpaths_osm.with_suffix(".pbf")
     subprocess.run(
         [
             "osmium",
@@ -89,7 +99,20 @@ def extract_footpaths(
             str(clipped),
             f"w/highway={highways}",
             "-o",
-            str(out_osm),
+            str(footpaths_osm),
+        ],
+        check=True,
+    )
+    subprocess.run(
+        [
+            "osmium",
+            "tags-filter",
+            "--no-progress",
+            "--overwrite",
+            str(clipped),
+            *PARK_FILTERS,
+            "-o",
+            str(parks_osm),
         ],
         check=True,
     )
@@ -180,6 +203,14 @@ class HalfPath:
     steps: tuple[tuple[int, int], ...]
 
 
+@dataclass(frozen=True)
+class Park:
+    """Outer rings and holes as closed `(lat, lon)` loops."""
+
+    outers: tuple[tuple[tuple[float, float], ...], ...]
+    inners: tuple[tuple[tuple[float, float], ...], ...] = ()
+
+
 def contract_chains(H: nx.Graph) -> list[Chain]:
     junctions = {n for n, d in H.degree() if d != 2}
     for component in nx.connected_components(H):
@@ -205,27 +236,52 @@ def contract_chains(H: nx.Graph) -> list[Chain]:
     return chains
 
 
-def half_paths(
-    adj: dict[int, list[tuple[int, int]]], chains: list[Chain], start: int, max_len: float
-) -> dict[int, list[HalfPath]]:
-    """Simple junction paths from `start` up to `max_len`, through junctions above `start` only."""
-    by_end: dict[int, list[HalfPath]] = defaultdict(list)
-    stack = [HalfPath(start, 0.0, 1 << start, 0, ())]
-    while stack:
-        p = stack.pop()
-        by_end[p.end].append(p)
-        for cid, v in adj[p.end]:
-            length = p.length + chains[cid].length
-            if v <= start or p.junctions >> v & 1 or length > max_len:
-                continue
-            stack.append(
-                HalfPath(
-                    v, length, p.junctions | 1 << v, p.chains | 1 << cid, (*p.steps, (cid, p.end))
+def beam_cycles(
+    adj: dict[int, list[tuple[int, int]]],
+    chains: list[Chain],
+    junction_count: int,
+    lo: float,
+    hi: float,
+) -> dict[int, tuple[float, tuple[tuple[int, int], ...]]]:
+    """Simple cycles in `[lo, hi]`, one per chain set, grown from the lowest junction.
+
+    Each junction keeps at most `BEAM_WIDTH` partial paths in a length band. Further
+    arrivals in that band are not extended.
+    """
+    found: dict[int, tuple[float, tuple[tuple[int, int], ...]]] = {}
+    for start in range(junction_count):
+        kept: dict[tuple[int, int], int] = {(start, 0): 1}
+        queue: deque[HalfPath] = deque([HalfPath(start, 0.0, 1 << start, 0, ())])
+        while queue:
+            path = queue.popleft()
+            for cid, end in adj[path.end]:
+                if path.chains >> cid & 1:
+                    continue
+                length = path.length + chains[cid].length
+                if length > hi:
+                    continue
+                if end == start:
+                    if length >= lo:
+                        mask = path.chains | 1 << cid
+                        found.setdefault(mask, (length, (*path.steps, (cid, path.end))))
+                    continue
+                if end < start or path.junctions >> end & 1:
+                    continue
+                band = int(length // BAND_M)
+                slot = (end, band)
+                if kept.get(slot, 0) >= BEAM_WIDTH:
+                    continue
+                kept[slot] = kept.get(slot, 0) + 1
+                queue.append(
+                    HalfPath(
+                        end,
+                        length,
+                        path.junctions | 1 << end,
+                        path.chains | 1 << cid,
+                        (*path.steps, (cid, path.end)),
+                    )
                 )
-            )
-    for paths in by_end.values():
-        paths.sort(key=lambda p: p.length)
-    return by_end
+    return found
 
 
 def expand(chains: list[Chain], steps: Iterable[tuple[int, int]]) -> list[int]:
@@ -237,74 +293,194 @@ def expand(chains: list[Chain], steps: Iterable[tuple[int, int]]) -> list[int]:
     return nodes
 
 
+def point_in_ring(lat: float, lon: float, ring: Sequence[tuple[float, float]]) -> bool:
+    inside = False
+    for (lat1, lon1), (lat2, lon2) in zip(ring, ring[1:], strict=False):
+        if (lat1 > lat) == (lat2 > lat):
+            continue
+        lon_at = lon1 + (lon2 - lon1) * (lat - lat1) / (lat2 - lat1)
+        if lon < lon_at:
+            inside = not inside
+    return inside
+
+
+def point_in_parks(lat: float, lon: float, parks: Sequence[Park]) -> bool:
+    for park in parks:
+        if any(point_in_ring(lat, lon, ring) for ring in park.outers) and not any(
+            point_in_ring(lat, lon, ring) for ring in park.inners
+        ):
+            return True
+    return False
+
+
+def _is_park(tags: dict[str, str]) -> bool:
+    return tags.get("leisure") in {"park", "garden"} or tags.get("landuse") == "recreation_ground"
+
+
+def _link_ring(ring: list[int], part: list[int]) -> list[int] | None:
+    if part[0] == ring[-1]:
+        return ring + part[1:]
+    if part[-1] == ring[-1]:
+        return ring + part[-2::-1]
+    if part[-1] == ring[0]:
+        return part[:-1] + ring
+    if part[0] == ring[0]:
+        return part[:0:-1] + ring
+    return None
+
+
+def _stitch_rings(parts: list[list[int]]) -> list[list[int]]:
+    """Join way fragments that share an endpoint. Multipolygon rings are often split."""
+    unused = [list(part) for part in parts if len(part) >= 2]
+    rings: list[list[int]] = []
+    while unused:
+        ring = unused.pop()
+        if ring[0] != ring[-1]:
+            progressed = True
+            while progressed and ring[0] != ring[-1]:
+                progressed = False
+                for i, part in enumerate(unused):
+                    linked = _link_ring(ring, part)
+                    if linked is None:
+                        continue
+                    ring = linked
+                    del unused[i]
+                    progressed = True
+                    break
+        if ring[0] == ring[-1] and len(ring) >= 4:
+            rings.append(ring)
+    return rings
+
+
+def _ring_coords(
+    node_ids: list[int], nodes: dict[int, tuple[float, float]]
+) -> tuple[tuple[float, float], ...] | None:
+    coords: list[tuple[float, float]] = []
+    for node_id in node_ids:
+        point = nodes.get(node_id)
+        if point is None:
+            return None
+        coords.append(point)
+    return tuple(coords)
+
+
+def load_park_polygons(osm_xml_path: Path) -> list[Park]:
+    root = DET.parse(osm_xml_path).getroot()
+    nodes = {
+        int(node.get("id")): (float(node.get("lat")), float(node.get("lon")))
+        for node in root.iter("node")
+    }
+    ways = {
+        int(way.get("id")): [int(nd.get("ref")) for nd in way.iter("nd")]
+        for way in root.iter("way")
+    }
+    way_tags = {
+        int(way.get("id")): {tag.get("k"): tag.get("v") for tag in way.iter("tag")}
+        for way in root.iter("way")
+    }
+    parks: list[Park] = []
+    for way_id, tags in way_tags.items():
+        refs = ways[way_id]
+        if not _is_park(tags) or len(refs) < 4 or refs[0] != refs[-1]:
+            continue
+        ring = _ring_coords(refs, nodes)
+        if ring is not None:
+            parks.append(Park(outers=(ring,)))
+
+    for rel in root.iter("relation"):
+        tags = {tag.get("k"): tag.get("v") for tag in rel.iter("tag")}
+        if not _is_park(tags):
+            continue
+        grouped: dict[str, list[list[int]]] = {"outer": [], "inner": []}
+        for member in rel.iter("member"):
+            if member.get("type") != "way":
+                continue
+            role = member.get("role") or "outer"
+            if role not in grouped:
+                continue
+            refs = ways.get(int(member.get("ref")))
+            if refs:
+                grouped[role].append(refs)
+        outers = [
+            coords
+            for ring in _stitch_rings(grouped["outer"])
+            if (coords := _ring_coords(ring, nodes)) is not None
+        ]
+        inners = [
+            coords
+            for ring in _stitch_rings(grouped["inner"])
+            if (coords := _ring_coords(ring, nodes)) is not None
+        ]
+        if outers:
+            parks.append(Park(outers=tuple(outers), inners=tuple(inners)))
+    return parks
+
+
+def loop_in_park(H: nx.Graph, loop: Sequence[int], parks: Sequence[Park]) -> bool:
+    body = loop[:-1]
+    if not parks or not body:
+        return False
+    inside = sum(
+        1 for node in body if point_in_parks(H.nodes[node]["y"], H.nodes[node]["x"], parks)
+    )
+    return inside >= PARK_NODE_FRACTION * len(body)
+
+
 def find_loops(
     H: nx.Graph,
     target_m: float,
     epsilon_m: float,
     max_loops: int,
     max_overlap: float,
+    parks: Sequence[Park] | None = None,
+    verbose: bool = False,
 ) -> list[tuple[list[int], float]]:
-    """Return up to max_loops distinct cycles within target_m ± epsilon_m, closest first.
+    """Return up to max_loops distinct cycles within target_m ± epsilon_m.
 
-    The graph is reduced to junctions joined by chains. A cycle through its lowest junction `s`
-    is split at the chain holding its midpoint: two simple half-paths from `s`, each at most half
-    the length, joined by that chain. A loop is skipped when more than max_overlap of its length
-    is shared with a loop already kept.
+    The graph is reduced to junctions joined by chains. Cycles are grown from the lowest
+    junction with a bounded beam. Park loops come first, then closer lengths. A loop is
+    skipped when more than max_overlap of its length is shared with a loop already kept.
     """
     lo, hi = target_m - epsilon_m, target_m + epsilon_m
     raw = contract_chains(H)
+    if not raw:
+        if verbose:
+            print("Junction graph: 0 junctions, 0 chains")
+        return []
     index = {j: i for i, j in enumerate(sorted({c.a for c in raw} | {c.b for c in raw}))}
     chains = [Chain(index[c.a], index[c.b], c.length, c.nodes) for c in raw]
     adj: dict[int, list[tuple[int, int]]] = defaultdict(list)
-    for cid, c in enumerate(chains):
-        adj[c.a].append((cid, c.b))
-        if c.a != c.b:
-            adj[c.b].append((cid, c.a))
+    for cid, chain in enumerate(chains):
+        adj[chain.a].append((cid, chain.b))
+        if chain.a != chain.b:
+            adj[chain.b].append((cid, chain.a))
 
-    candidates: list[tuple[float, float, int, tuple[tuple[int, int], ...]]] = []
-    for s in range(len(index)):
-        by_end = half_paths(adj, chains, s, hi / 2)
-        for out in (p for paths in by_end.values() for p in paths):
-            for cid, v in adj[out.end]:
-                if v < s or (v != s and out.junctions >> v & 1) or out.chains >> cid & 1:
-                    continue
-                mid = chains[cid].length
-                backs = by_end.get(v, [])
-                i = bisect.bisect_left(
-                    backs, max(lo - out.length - mid, out.length - mid), key=lambda p: p.length
-                )
-                for back in backs[i:]:
-                    if back.length > hi - out.length - mid or back.length >= out.length + mid:
-                        break
-                    if out.junctions & back.junctions != 1 << s or back.chains >> cid & 1:
-                        continue
-                    first_out = out.steps[0][0] if out.steps else cid
-                    first_back = back.steps[0][0] if back.steps else cid
-                    if first_out > first_back:
-                        continue
-                    total = out.length + mid + back.length
-                    rev_back = tuple(
-                        (c, chains[c].b if chains[c].a == f else chains[c].a)
-                        for c, f in reversed(back.steps)
-                    )
-                    steps = (*out.steps, (cid, out.end), *rev_back)
-                    candidates.append(
-                        (abs(total - target_m), total, out.chains | back.chains | 1 << cid, steps)
-                    )
+    if verbose:
+        print(f"Junction graph: {len(index)} junctions, {len(chains)} chains")
+    found = beam_cycles(adj, chains, len(index), lo, hi)
+    if verbose:
+        print(f"Cycle candidates: {len(found)}")
 
-    candidates.sort(key=lambda c: c[0])
+    park_areas = parks or ()
+    ranked: list[tuple[int, float, float, tuple[tuple[int, int], ...], list[int]]] = []
+    for length, steps in found.values():
+        nodes = expand(chains, steps)
+        park_rank = 0 if loop_in_park(H, nodes, park_areas) else 1
+        ranked.append((park_rank, abs(length - target_m), length, steps, nodes))
+    ranked.sort(key=lambda item: (item[0], item[1], item[2]))
+
     kept: list[tuple[list[int], float]] = []
     kept_by_chain: dict[int, list[int]] = defaultdict(list)
-    for _, total, _, steps in candidates:
+    for _, _, total, steps, nodes in ranked:
         shared: dict[int, float] = defaultdict(float)
         for cid, _ in steps:
-            for k in kept_by_chain[cid]:
-                shared[k] += chains[cid].length
+            for kept_index in kept_by_chain[cid]:
+                shared[kept_index] += chains[cid].length
         if shared and max(shared.values()) > max_overlap * total:
             continue
         for cid, _ in steps:
             kept_by_chain[cid].append(len(kept))
-        kept.append((expand(chains, steps), total))
+        kept.append((nodes, total))
         if len(kept) >= max_loops:
             break
     return kept
@@ -380,16 +556,22 @@ def main() -> None:
     gpx_dir = out_dir / "gpx"
     gpx_dir.mkdir(parents=True, exist_ok=True)
     footpaths_osm = out_dir / "footpaths.osm"
+    parks_osm = out_dir / "parks.osm"
     kml_path = out_dir / "loops.kml"
 
-    extract_footpaths(args.pbf, lat, lon, args.radius, footpaths_osm)
+    extract_osm(args.pbf, lat, lon, args.radius, footpaths_osm, parks_osm)
     G = load_footpath_graph(footpaths_osm, lat, lon, args.radius)
     H = to_simple_undirected(G)
     if USE_K_CORE and not args.no_k_core:
         H = prune_k_core(H, K_CORE_K)
+    parks = load_park_polygons(parks_osm)
+    print(f"Park polygons: {len(parks)}")
 
-    loops = find_loops(H, args.target, args.epsilon, args.max_loops, args.max_overlap)
-    print(f"Found loops: {len(loops)}")
+    loops = find_loops(
+        H, args.target, args.epsilon, args.max_loops, args.max_overlap, parks, verbose=True
+    )
+    in_parks = sum(loop_in_park(H, loop, parks) for loop, _ in loops)
+    print(f"Found loops: {len(loops)} ({in_parks} in parks)")
 
     write_kml(H, loops, args.target, str(kml_path))
     print(f"Wrote {kml_path}")
