@@ -2,7 +2,8 @@
 
 PYTHON := uv run python
 
-DATA_DIR ?= data
+DATA_ROOT ?= $(HOME)/Documents/data
+DATA_DIR ?= $(DATA_ROOT)/$(notdir $(CURDIR))
 OSM_URL = https://download.geofabrik.de/asia/vietnam-latest.osm.pbf
 
 DOTFILES_MK := $(HOME)/gitRepo/dotfiles/make/osm-country.mk

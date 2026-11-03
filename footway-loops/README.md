@@ -6,7 +6,7 @@ Finds a self-transcendence running loop in your neighborhood: a short closed loo
 
 - `make run LOCATION=20.99,105.8679` (also `RADIUS`, `TARGET`, `EPSILON`); fetches the Vietnam extract first if missing or stale. Needs `osmium`.
 
-Outputs go to `data/<lat>_<lon>_<radius>m/`: `footpaths.osm`, `loops.kml`, `gpx/loop_NNN_<length>m.gpx`. Import `loops.kml` into Google My Maps to compare loops, then load the chosen GPX onto your watch.
+Outputs go to `~/Documents/data/footway-loops/<lat>_<lon>_<radius>m/` (override with `DATA_DIR=` or `DATA_ROOT=`): `footpaths.osm`, `loops.kml`, `gpx/loop_NNN_<length>m.gpx`. Import `loops.kml` into Google My Maps to compare loops, then load the chosen GPX onto your watch.
 
 ## Workflow
 

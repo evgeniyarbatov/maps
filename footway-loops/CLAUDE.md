@@ -16,6 +16,6 @@ Finds self-transcendence running loops (default 883 m, the Self-Transcendence 31
 
 ## Conventions / gotchas
 
-- Output lives in `data/` inside the project (gitignored), one folder per `<lat>_<lon>_<radius>m`.
+- Output lives outside the repo in `~/Documents/data/footway-loops` (`DATA_DIR`), one folder per `<lat>_<lon>_<radius>m`; nothing is written into the project.
 - The search stops at `MAX_LOOPS` before sorting, so "closest to target" is among the loops found first, not globally.
 - Nodes outside the radius are dropped, so footpaths crossing the circle edge show up as skipped segments.

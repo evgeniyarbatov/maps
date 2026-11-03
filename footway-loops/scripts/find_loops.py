@@ -11,10 +11,10 @@ from xml.etree.ElementTree import Element, ElementTree, SubElement  # noqa: S405
 import defusedxml.ElementTree as DET
 import networkx as nx
 
-COUNTRY_PBF = "data/vietnam-latest.osm.pbf"
+OUT_DIR = Path.home() / "Documents/data/footway-loops"
+COUNTRY_PBF = OUT_DIR / "vietnam-latest.osm.pbf"
 LOCATION = "20.9947,105.8679"
 RADIUS_M = 700.0
-OUT_DIR = "data"
 
 TARGET_LENGTH_M = 883.0
 EPSILON_M = 50.0
