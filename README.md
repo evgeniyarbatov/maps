@@ -28,6 +28,7 @@ GPX tracks, geotagged photos ──► gpx-map, photo-map ──► on the map
 | [gpx-osm-missing-paths/](gpx-osm-missing-paths) | Clusters GPX traces to find footpaths missing from OSM and builds JOSM-ready bundles | `make city gpx process cluster` |
 | [osm-way-width/](osm-way-width) | Estimates the width of OSM ways from many polylines | `make area way width` |
 | [osm-waypoints/](osm-waypoints) | Extracts, validates and describes points of interest from OSM as waypoints | `make extract-osm extract-pois` |
+| [footway-loops/](footway-loops) | Finds closed footpath loops of a target length around a point; exports KML and GPX | `make run LAT=… LON=…` |
 | [vibe-mapping/](vibe-mapping) | Uses OSM features and a local LLM to learn the vibe of a place | `make area points` |
 
 **On the map**

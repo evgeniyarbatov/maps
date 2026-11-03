@@ -23,6 +23,7 @@ Each top-level folder is an independent project. Work inside one folder; `cd <fo
 
 | Folder | What it does | Run | Needs |
 |---|---|---|---|
+| `footway-loops` | Closed footpath loops of a target length around a point, as KML + GPX | `make run LAT=<lat> LON=<lon>` | `osm-country`, `osmium` |
 | `gpx-courses` | Merges several GPX tracks into one clean course using OSM and OSRM | `make run GPX_DIR=<dir> NAME=<course>` | `osm-country`, `osrm`, `overpass` |
 | `gpx-osm-missing-paths` | Clusters traces to find footpaths missing from OSM; builds JOSM bundles | `make run` | `osm-country`, `activity-data` (copy `env.example` to `.env`) |
 | `osm-way-width` | Estimates OSM way width from many run polylines | `make run` | `osm-country`, Strava polylines in `DATA_DIR` |
