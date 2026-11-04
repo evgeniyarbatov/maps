@@ -1,6 +1,6 @@
 # How the loop search works
 
-The goal: find simple cycles (no repeated node) in the footpath network inside a circle whose length is within `TARGET ± EPSILON`, prefer the ones inside parks, and keep those that aren't near-duplicates of each other.
+The goal: find simple cycles (no repeated node) in the footpath network inside a circle whose length is within `TARGET ± EPSILON`, leave out any loop that crosses a vehicle road, prefer the ones inside parks, and keep those that aren't near-duplicates of each other.
 
 ## Pipeline
 
@@ -9,10 +9,12 @@ country .osm.pbf
   → osmium extract (bbox)
        → tags-filter footpaths     footpaths.osm
        → tags-filter parks         parks.osm
-  → graph of nodes inside the circle
+       → tags-filter roads         roads.osm
+  → graph of nodes inside the circle, without road crossings
   → undirected simple graph → 2-core
   → chain contraction (junction graph)
   → bounded beam cycle search
+  → drop loops that cross a vehicle road
   → fewest turns, then park loops, then |length − target|; drop overlapping loops
   → loops.kml + gpx/loop_NNN_<len>m.gpx
 ```
@@ -20,15 +22,17 @@ country .osm.pbf
 ## 1. Extract
 
 - The circle's bounding box is computed from the radius (latitude span is radius / Earth radius; longitude span is widened by `1 / cos(lat)`).
-- One `osmium extract -b` clips the country file. Two `osmium tags-filter` passes read that clip, then the clip is deleted.
+- One `osmium extract -b` clips the country file. Three `osmium tags-filter` passes read that clip, then the clip is deleted.
 - Footpaths are ways tagged `highway=footway|path|pedestrian|steps`, plus the nodes they reference. A sidewalk drawn as its own footway is included. A sidewalk that is only a tag on a road is not, and neither are tracks or cycleways.
 - Parks are ways and relations tagged `leisure=park`, `leisure=garden`, or `landuse=recreation_ground`. The filter keeps relation members, so a multipolygon's outer ways are in `parks.osm` even when those ways have no park tag.
+- Vehicle roads are ways tagged `highway` as motorway, trunk, primary, secondary, tertiary, unclassified, residential, living_street, service, or road, plus the link forms of motorway, trunk, primary, secondary, and tertiary. They are written to `roads.osm`. Service roads are included.
 
 ## 2. Build the graph
 
 - Every OSM node within the radius (haversine distance from the centre) becomes a graph node.
 - Every pair of consecutive nodes in a footpath way becomes an edge weighted by the haversine distance between them. A segment with an endpoint outside the circle is skipped, which is why paths crossing the circle edge get cut.
-- The graph is collapsed to undirected and simple: self-loops are dropped, and when two ways connect the same pair of nodes the shorter edge is kept.
+- A segment is also skipped when its way is a crossing (`footway=crossing` or `traffic_island`, or any `crossing` tag other than `no`), or when it meets a vehicle road of the same grade. Same grade means the open segments intersect, or a footpath end lies in the interior of a road segment. A shared endpoint does not count. Grade is the `layer` tag when it is a number; otherwise a bridge is 1 and a tunnel is -1.
+- The graph is collapsed to undirected and simple: self-loops are dropped, and when two ways connect the same pair of nodes the shorter edge is kept. Its grade is kept with it.
 
 ## 3. Prune to the 2-core
 
@@ -63,6 +67,8 @@ Work per start is capped by junctions × length bands × 24. On the 4×4 test gr
 
 ## 6. Parks, rank, and de-duplicate
 
+A candidate is dropped when the walk steps from one side of a vehicle road to the other at the same grade. At a loop node that also lies on a road, both neighbouring points must sit at least 1 m off that road's line and on opposite sides. A corner, where one leg runs along the road, stays. A crossing drawn through the road's own node does not intersect the road segment, which is why this second check exists. The drop happens before the top 10 are chosen, so another loop can take the place.
+
 Polygons are read from `parks.osm`:
 
 - A closed way with a park tag is one outer ring.
@@ -93,3 +99,4 @@ A loop that shares half its length with a smoother one already kept is dropped, 
 - On a dense graph the beam drops partial walks, so some cycles in the window are never returned.
 - A park whose boundary misses the clip is ignored. When the whole circle sits inside one park, every loop is a park loop and the preference does not change the order.
 - Results depend on how footpaths are tagged in OSM. A sidewalk that was never drawn as its own way is invisible.
+- A sidewalk that stays beside a road is kept. A crossing that is neither tagged, nor drawn across a road segment, nor stepped through a road node from one side to the other is not removed.

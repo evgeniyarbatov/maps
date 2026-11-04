@@ -40,6 +40,182 @@ def path_length(H: nx.Graph, loop: list[int]) -> float:
     return sum(H[u][v]["length"] for u, v in zip(loop, loop[1:], strict=False))
 
 
+def add_ring(
+    H: nx.Graph,
+    ids: list[int],
+    coords: list[tuple[float, float]],
+    edge_m: float,
+    grade: int = 0,
+) -> None:
+    for node, (lat, lon) in zip(ids, coords, strict=True):
+        H.add_node(node, y=lat, x=lon)
+    for a, b in zip(ids, [*ids[1:], ids[0]], strict=True):
+        H.add_edge(a, b, length=edge_m, grade=grade)
+
+
+def load_osm(body: str, roads: list[fl.RoadSeg] | None = None) -> nx.MultiDiGraph:
+    xml = f'<?xml version="1.0" encoding="UTF-8"?>\n<osm version="0.6">\n{body}</osm>\n'
+    with tempfile.NamedTemporaryFile("w", suffix=".osm") as handle:
+        handle.write(xml)
+        handle.flush()
+        return fl.load_footpath_graph(Path(handle.name), 10.77, 106.69, 5_000.0, roads or ())
+
+
+class RoadCrossingTest(unittest.TestCase):
+    def test_open_segments_cross_only_at_a_proper_intersection(self) -> None:
+        self.assertTrue(fl.segments_cross((0.0, 0.0), (2.0, 2.0), (0.0, 2.0), (2.0, 0.0)))
+        self.assertFalse(fl.segments_cross((0.0, 0.0), (1.0, 0.0), (1.0, 0.0), (1.0, 1.0)))
+        self.assertFalse(fl.segments_cross((0.0, 0.0), (2.0, 0.0), (1.0, 0.0), (3.0, 0.0)))
+
+    def test_same_grade_road_blocks_a_segment(self) -> None:
+        road = fl.RoadSeg(0.0, 0.0, 0.0, 2.0, 0)
+        self.assertTrue(fl.segment_crosses_road(-1.0, 1.0, 1.0, 1.0, 0, [road]))
+        self.assertTrue(fl.segment_crosses_road(1.0, 1.0, 0.0, 1.0, 0, [road]))
+        self.assertFalse(fl.segment_crosses_road(0.0, 0.0, 1.0, 0.0, 0, [road]))
+        self.assertFalse(fl.segment_crosses_road(-1.0, 1.0, 1.0, 1.0, 1, [road]))
+
+    def test_crossing_tags(self) -> None:
+        self.assertTrue(fl.is_crossing_way({"footway": "crossing"}))
+        self.assertTrue(fl.is_crossing_way({"footway": "traffic_island"}))
+        self.assertTrue(fl.is_crossing_way({"crossing": "marked"}))
+        self.assertFalse(fl.is_crossing_way({"crossing": "no", "footway": "sidewalk"}))
+
+    def test_mapped_crossing_is_not_loaded(self) -> None:
+        graph = load_osm(
+            """
+  <node id="1" lat="10.770" lon="106.690"/>
+  <node id="2" lat="10.771" lon="106.690"/>
+  <way id="10">
+    <nd ref="1"/><nd ref="2"/>
+    <tag k="highway" v="footway"/>
+    <tag k="footway" v="crossing"/>
+  </way>
+"""
+        )
+        self.assertEqual(graph.number_of_edges(), 0)
+
+    def test_segment_that_cuts_a_road_is_not_loaded(self) -> None:
+        road = [fl.RoadSeg(10.771, 106.690, 10.771, 106.692, 0)]
+        graph = load_osm(
+            """
+  <node id="1" lat="10.770" lon="106.691"/>
+  <node id="2" lat="10.772" lon="106.691"/>
+  <way id="10">
+    <nd ref="1"/><nd ref="2"/>
+    <tag k="highway" v="footway"/>
+  </way>
+""",
+            road,
+        )
+        self.assertEqual(graph.number_of_edges(), 0)
+
+    def test_shared_endpoint_and_bridge_are_loaded(self) -> None:
+        road = [fl.RoadSeg(10.771, 106.690, 10.771, 106.692, 0)]
+        shared = load_osm(
+            """
+  <node id="1" lat="10.771" lon="106.690"/>
+  <node id="2" lat="10.773" lon="106.690"/>
+  <way id="10">
+    <nd ref="1"/><nd ref="2"/>
+    <tag k="highway" v="footway"/>
+    <tag k="footway" v="sidewalk"/>
+  </way>
+""",
+            road,
+        )
+        bridge = load_osm(
+            """
+  <node id="1" lat="10.770" lon="106.691"/>
+  <node id="2" lat="10.772" lon="106.691"/>
+  <way id="10">
+    <nd ref="1"/><nd ref="2"/>
+    <tag k="highway" v="footway"/>
+    <tag k="bridge" v="yes"/>
+  </way>
+""",
+            road,
+        )
+        self.assertEqual(shared.number_of_edges(), 1)
+        self.assertEqual(bridge.number_of_edges(), 1)
+
+    def test_road_arms_point_at_the_other_end(self) -> None:
+        self.assertEqual(fl.way_grade({"layer": "2", "bridge": "yes"}), 2)
+        self.assertEqual(fl.way_grade({"tunnel": "yes"}), -1)
+        self.assertEqual(fl.way_grade({"layer": "nope"}), 0)
+        with tempfile.NamedTemporaryFile("w", suffix=".osm") as handle:
+            handle.write(
+                """<?xml version="1.0" encoding="UTF-8"?>
+<osm version="0.6">
+  <node id="1" lat="10.770" lon="106.690"/>
+  <node id="2" lat="10.770" lon="106.691"/>
+  <node id="3" lat="10.772" lon="106.690"/>
+  <node id="4" lat="10.772" lon="106.691"/>
+  <way id="10">
+    <nd ref="1"/><nd ref="2"/>
+    <tag k="highway" v="residential"/>
+  </way>
+  <way id="11">
+    <nd ref="3"/><nd ref="4"/>
+    <tag k="highway" v="primary"/>
+    <tag k="bridge" v="yes"/>
+  </way>
+</osm>
+"""
+            )
+            handle.flush()
+            segments, arms = fl.load_road_network(Path(handle.name))
+        self.assertEqual(sorted(segment.grade for segment in segments), [0, 1])
+        self.assertEqual(arms[1], (fl.RoadArm(10.770, 106.691, 0),))
+        self.assertEqual(arms[2][0].grade, 0)
+        self.assertEqual(arms[3][0].grade, 1)
+
+    def test_opposite_sides_of_a_road_are_dropped(self) -> None:
+        graph = nx.Graph()
+        add_ring(
+            graph,
+            [1, 2, 3, 4],
+            [(0.0, 0.0), (0.002, 0.0), (0.0, -0.002), (-0.002, 0.0)],
+            220.0,
+        )
+        add_ring(
+            graph,
+            [5, 6, 7, 8],
+            [(1.0, 1.0), (1.0, 1.002), (1.002, 1.002), (1.002, 1.0)],
+            200.0,
+        )
+        arms = {1: (fl.RoadArm(0.0, 0.002, 0),)}
+        self.assertTrue(fl.loop_crosses_road(graph, [1, 2, 3, 4, 1], arms))
+        loops = fl.find_loops(graph, 883.0, 100.0, 10, 1.0, road_arms=arms)
+        self.assertEqual([length for _, length in loops], [800.0])
+
+    def test_corner_along_a_road_is_kept(self) -> None:
+        graph = nx.Graph()
+        add_ring(
+            graph,
+            [1, 2, 3, 4],
+            [(0.0, 0.0), (0.002, 0.0), (0.002, 0.002), (0.0, 0.002)],
+            220.0,
+        )
+        arms = {1: (fl.RoadArm(0.0, 0.003, 0),)}
+        self.assertFalse(fl.loop_crosses_road(graph, [1, 2, 3, 4, 1], arms))
+        loops = fl.find_loops(graph, 883.0, 100.0, 10, 1.0, road_arms=arms)
+        self.assertEqual([length for _, length in loops], [880.0])
+
+    def test_bridge_over_a_road_is_kept(self) -> None:
+        graph = nx.Graph()
+        add_ring(
+            graph,
+            [1, 2, 3, 4],
+            [(0.0, 0.0), (0.002, 0.0), (0.0, -0.002), (-0.002, 0.0)],
+            220.0,
+            grade=1,
+        )
+        arms = {1: (fl.RoadArm(0.0, 0.002, 0),)}
+        self.assertFalse(fl.loop_crosses_road(graph, [1, 2, 3, 4, 1], arms))
+        loops = fl.find_loops(graph, 883.0, 100.0, 10, 1.0, road_arms=arms)
+        self.assertEqual([length for _, length in loops], [880.0])
+
+
 class FindLoopsTest(unittest.TestCase):
     def test_unit_squares_found_once_each(self) -> None:
         H = grid(3, 100.0)

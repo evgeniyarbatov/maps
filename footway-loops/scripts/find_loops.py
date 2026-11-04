@@ -31,6 +31,26 @@ BAND_M = 40.0
 PARK_NODE_FRACTION = 0.5
 
 FOOTPATH_HIGHWAYS = {"footway", "path", "pedestrian", "steps"}
+ROAD_HIGHWAYS = frozenset(
+    {
+        "motorway",
+        "trunk",
+        "primary",
+        "secondary",
+        "tertiary",
+        "unclassified",
+        "residential",
+        "living_street",
+        "service",
+        "road",
+        "motorway_link",
+        "trunk_link",
+        "primary_link",
+        "secondary_link",
+        "tertiary_link",
+    }
+)
+ROAD_OFFSET_M = 1.0
 PARK_FILTERS = (
     "w/leisure=park,garden",
     "w/landuse=recreation_ground",
@@ -70,7 +90,13 @@ def haversine_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
 
 
 def extract_osm(
-    country_pbf: str, lat: float, lon: float, radius_m: float, footpaths_osm: Path, parks_osm: Path
+    country_pbf: str,
+    lat: float,
+    lon: float,
+    radius_m: float,
+    footpaths_osm: Path,
+    parks_osm: Path,
+    roads_osm: Path,
 ) -> None:
     dlat = math.degrees(radius_m / EARTH_RADIUS_M)
     dlon = dlat / math.cos(math.radians(lat))
@@ -117,11 +143,140 @@ def extract_osm(
         ],
         check=True,
     )
+    subprocess.run(
+        [
+            "osmium",
+            "tags-filter",
+            "--no-progress",
+            "--overwrite",
+            str(clipped),
+            "w/highway=" + ",".join(sorted(ROAD_HIGHWAYS)),
+            "-o",
+            str(roads_osm),
+        ],
+        check=True,
+    )
     clipped.unlink()
 
 
+@dataclass(frozen=True)
+class RoadSeg:
+    lat1: float
+    lon1: float
+    lat2: float
+    lon2: float
+    grade: int
+
+
+@dataclass(frozen=True)
+class RoadArm:
+    """The other end of a vehicle-road segment that touches a node."""
+
+    lat: float
+    lon: float
+    grade: int
+
+
+def way_grade(tags: dict[str, str]) -> int:
+    if "layer" in tags:
+        try:
+            return int(float(tags["layer"]))
+        except ValueError:
+            return 0
+    if tags.get("bridge") in {"yes", "viaduct", "boardwalk"}:
+        return 1
+    if tags.get("tunnel") in {"yes", "building_passage", "culvert"}:
+        return -1
+    return 0
+
+
+def is_crossing_way(tags: dict[str, str]) -> bool:
+    if tags.get("footway") in {"crossing", "traffic_island"}:
+        return True
+    crossing = tags.get("crossing")
+    return crossing is not None and crossing != "no"
+
+
+def _orient(ax: float, ay: float, bx: float, by: float, cx: float, cy: float) -> float:
+    return (bx - ax) * (cy - ay) - (by - ay) * (cx - ax)
+
+
+def segments_cross(
+    a: tuple[float, float],
+    b: tuple[float, float],
+    c: tuple[float, float],
+    d: tuple[float, float],
+) -> bool:
+    """True when the open segments ab and cd intersect. A shared endpoint does not count."""
+    o1 = _orient(*a, *b, *c)
+    o2 = _orient(*a, *b, *d)
+    o3 = _orient(*c, *d, *a)
+    o4 = _orient(*c, *d, *b)
+    return o1 * o2 < 0 and o3 * o4 < 0
+
+
+def _on_segment_interior(
+    a: tuple[float, float], b: tuple[float, float], p: tuple[float, float]
+) -> bool:
+    if p in (a, b) or abs(_orient(*a, *b, *p)) > 1e-12:
+        return False
+    return min(a[0], b[0]) <= p[0] <= max(a[0], b[0]) and min(a[1], b[1]) <= p[1] <= max(
+        a[1], b[1]
+    )
+
+
+def segment_crosses_road(
+    lat1: float, lon1: float, lat2: float, lon2: float, grade: int, roads: Sequence[RoadSeg]
+) -> bool:
+    if not roads:
+        return False
+    a = (lon1, lat1)
+    b = (lon2, lat2)
+    for road in roads:
+        if road.grade != grade:
+            continue
+        c = (road.lon1, road.lat1)
+        d = (road.lon2, road.lat2)
+        if (
+            segments_cross(a, b, c, d)
+            or _on_segment_interior(c, d, a)
+            or _on_segment_interior(c, d, b)
+        ):
+            return True
+    return False
+
+
+def load_road_network(osm_xml_path: Path) -> tuple[list[RoadSeg], dict[int, tuple[RoadArm, ...]]]:
+    root = DET.parse(osm_xml_path).getroot()
+    nodes = {
+        int(node.get("id")): (float(node.get("lat")), float(node.get("lon")))
+        for node in root.iter("node")
+    }
+    segments: list[RoadSeg] = []
+    arms: dict[int, list[RoadArm]] = defaultdict(list)
+    for way in root.iter("way"):
+        tags = {tag.get("k"): tag.get("v") for tag in way.iter("tag")}
+        if tags.get("highway") not in ROAD_HIGHWAYS:
+            continue
+        grade = way_grade(tags)
+        refs = [int(nd.get("ref")) for nd in way.iter("nd")]
+        for u, v in zip(refs, refs[1:], strict=False):
+            if u not in nodes or v not in nodes or u == v:
+                continue
+            lat_u, lon_u = nodes[u]
+            lat_v, lon_v = nodes[v]
+            segments.append(RoadSeg(lat_u, lon_u, lat_v, lon_v, grade))
+            arms[u].append(RoadArm(lat_v, lon_v, grade))
+            arms[v].append(RoadArm(lat_u, lon_u, grade))
+    return segments, {node: tuple(node_arms) for node, node_arms in arms.items()}
+
+
 def load_footpath_graph(
-    osm_xml_path: Path, lat: float, lon: float, radius_m: float
+    osm_xml_path: Path,
+    lat: float,
+    lon: float,
+    radius_m: float,
+    road_segments: Sequence[RoadSeg] = (),
 ) -> nx.MultiDiGraph:
     """Nodes outside the circle are dropped, so segments that leave it count as skipped."""
     root = DET.parse(osm_xml_path).getroot()
@@ -138,19 +293,29 @@ def load_footpath_graph(
 
     added_segments = 0
     skipped_segments = 0
+    skipped_crossings = 0
     for way in root.iter("way"):
         tags = {t.get("k"): t.get("v") for t in way.iter("tag")}
         hw = tags.get("highway")
         if hw not in FOOTPATH_HIGHWAYS:
             continue
         way_id = int(way.get("id"))
+        grade = way_grade(tags)
+        crossing_way = is_crossing_way(tags)
         refs = [int(nd.get("ref")) for nd in way.iter("nd")]
         for u, v in zip(refs, refs[1:], strict=False):
             if u not in nodes or v not in nodes:
                 skipped_segments += 1
                 continue
-            length_m = haversine_m(*nodes[u], *nodes[v])
-            G.add_edge(u, v, osmid=way_id, highway=hw, length=length_m)
+            lat_u, lon_u = nodes[u]
+            lat_v, lon_v = nodes[v]
+            if crossing_way or segment_crosses_road(
+                lat_u, lon_u, lat_v, lon_v, grade, road_segments
+            ):
+                skipped_crossings += 1
+                continue
+            length_m = haversine_m(lat_u, lon_u, lat_v, lon_v)
+            G.add_edge(u, v, osmid=way_id, highway=hw, length=length_m, grade=grade)
             added_segments += 1
 
     G.remove_nodes_from(list(nx.isolates(G)))
@@ -158,6 +323,7 @@ def load_footpath_graph(
     print(f"Loaded nodes: {G.number_of_nodes()}")
     print(f"Added segments: {added_segments}")
     print(f"Skipped segments (missing endpoint node): {skipped_segments}")
+    print(f"Skipped segments (cross a road): {skipped_crossings}")
     return G
 
 
@@ -168,11 +334,13 @@ def to_simple_undirected(G: nx.MultiDiGraph) -> nx.Graph:
         if u == v:
             continue
         length = data["length"]
+        grade = data.get("grade", 0)
         if H.has_edge(u, v):
             if length < H[u][v]["length"]:
                 H[u][v]["length"] = length
+                H[u][v]["grade"] = grade
         else:
-            H.add_edge(u, v, length=length)
+            H.add_edge(u, v, length=length, grade=grade)
     H.remove_nodes_from(list(nx.isolates(H)))
     return H
 
@@ -448,6 +616,46 @@ def turn_count(H: nx.Graph, loop: Sequence[int]) -> int:
     return turns
 
 
+def loop_crosses_road(
+    H: nx.Graph, loop: Sequence[int], road_arms: dict[int, tuple[RoadArm, ...]]
+) -> bool:
+    """True when the walk steps from one side of a vehicle road to the other.
+
+    A crossing mapped through the road's own node does not intersect the road segment,
+    so the two neighbours of that node are checked instead.
+    """
+    if not road_arms:
+        return False
+    body = loop[:-1]
+    count = len(body)
+    for i, node in enumerate(body):
+        arms = road_arms.get(node)
+        if not arms:
+            continue
+        prev = body[(i - 1) % count]
+        nxt = body[(i + 1) % count]
+        if H[prev][node].get("grade", 0) != H[node][nxt].get("grade", 0):
+            continue
+        grade = H[prev][node].get("grade", 0)
+        nlat, nlon = H.nodes[node]["y"], H.nodes[node]["x"]
+        prev_east, prev_north = _leg_m(nlat, nlon, H.nodes[prev]["y"], H.nodes[prev]["x"])
+        next_east, next_north = _leg_m(nlat, nlon, H.nodes[nxt]["y"], H.nodes[nxt]["x"])
+        for arm in arms:
+            if arm.grade != grade:
+                continue
+            road_east, road_north = _leg_m(nlat, nlon, arm.lat, arm.lon)
+            road_len = math.hypot(road_east, road_north)
+            if road_len < 1.0:
+                continue
+            prev_side = (road_east * prev_north - road_north * prev_east) / road_len
+            next_side = (road_east * next_north - road_north * next_east) / road_len
+            opposite = prev_side * next_side < 0
+            clear = abs(prev_side) >= ROAD_OFFSET_M and abs(next_side) >= ROAD_OFFSET_M
+            if opposite and clear:
+                return True
+    return False
+
+
 def loop_in_park(H: nx.Graph, loop: Sequence[int], parks: Sequence[Park]) -> bool:
     body = loop[:-1]
     if not parks or not body:
@@ -465,14 +673,15 @@ def find_loops(
     max_loops: int,
     max_overlap: float,
     parks: Sequence[Park] | None = None,
+    road_arms: dict[int, tuple[RoadArm, ...]] | None = None,
     verbose: bool = False,
 ) -> list[tuple[list[int], float]]:
     """Return up to max_loops distinct cycles within target_m ± epsilon_m.
 
     The graph is reduced to junctions joined by chains. Cycles are grown from the lowest
-    junction with a bounded beam. Fewer turns come first, then park loops, then closer
-    lengths. A loop is skipped when more than max_overlap of its length is shared with
-    a loop already kept.
+    junction with a bounded beam. A loop that crosses a vehicle road is dropped. Fewer
+    turns come first, then park loops, then closer lengths. A loop is skipped when more
+    than max_overlap of its length is shared with a loop already kept.
     """
     lo, hi = target_m - epsilon_m, target_m + epsilon_m
     raw = contract_chains(H)
@@ -495,13 +704,20 @@ def find_loops(
         print(f"Cycle candidates: {len(found)}")
 
     park_areas = parks or ()
+    arms = road_arms or {}
     ranked: list[tuple[int, int, float, float, tuple[tuple[int, int], ...], list[int]]] = []
+    crossed = 0
     for length, steps in found.values():
         nodes = expand(chains, steps)
+        if arms and loop_crosses_road(H, nodes, arms):
+            crossed += 1
+            continue
         park_rank = 0 if loop_in_park(H, nodes, park_areas) else 1
         ranked.append(
             (turn_count(H, nodes), park_rank, abs(length - target_m), length, steps, nodes)
         )
+    if verbose:
+        print(f"Loops dropped (cross a road): {crossed}")
     ranked.sort(key=lambda item: (item[0], item[1], item[2], item[3]))
 
     kept: list[tuple[list[int], float]] = []
@@ -595,10 +811,12 @@ def main() -> None:
     gpx_dir.mkdir(parents=True, exist_ok=True)
     footpaths_osm = out_dir / "footpaths.osm"
     parks_osm = out_dir / "parks.osm"
+    roads_osm = out_dir / "roads.osm"
     kml_path = out_dir / "loops.kml"
 
-    extract_osm(args.pbf, lat, lon, args.radius, footpaths_osm, parks_osm)
-    G = load_footpath_graph(footpaths_osm, lat, lon, args.radius)
+    extract_osm(args.pbf, lat, lon, args.radius, footpaths_osm, parks_osm, roads_osm)
+    road_segments, road_arms = load_road_network(roads_osm)
+    G = load_footpath_graph(footpaths_osm, lat, lon, args.radius, road_segments)
     H = to_simple_undirected(G)
     if USE_K_CORE and not args.no_k_core:
         H = prune_k_core(H, K_CORE_K)
@@ -606,7 +824,14 @@ def main() -> None:
     print(f"Park polygons: {len(parks)}")
 
     loops = find_loops(
-        H, args.target, args.epsilon, args.max_loops, args.max_overlap, parks, verbose=True
+        H,
+        args.target,
+        args.epsilon,
+        args.max_loops,
+        args.max_overlap,
+        parks,
+        road_arms,
+        verbose=True,
     )
     in_parks = sum(loop_in_park(H, loop, parks) for loop, _ in loops)
     print(f"Found loops: {len(loops)} ({in_parks} in parks)")
