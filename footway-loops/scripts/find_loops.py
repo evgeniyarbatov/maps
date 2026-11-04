@@ -24,6 +24,8 @@ EPSILON_M = 50.0
 MAX_LOOPS = 10
 MAX_OVERLAP = 0.5
 TURN_ANGLE_DEG = 30.0
+SHARP_TURN_DEG = 60.0
+MIN_TURN_GAP_M = 15.0
 
 # Smallest width that still returns every cycle on the 4×4 test grid.
 BEAM_WIDTH = 24
@@ -592,6 +594,20 @@ def _leg_m(lat1: float, lon1: float, lat2: float, lon2: float) -> tuple[float, f
     return east, north
 
 
+def _heading_change_deg(
+    lat0: float, lon0: float, lat1: float, lon1: float, lat2: float, lon2: float
+) -> float | None:
+    east_in, north_in = _leg_m(lat0, lon0, lat1, lon1)
+    east_out, north_out = _leg_m(lat1, lon1, lat2, lon2)
+    if east_in * east_in + north_in * north_in < 1.0:
+        return None
+    if east_out * east_out + north_out * north_out < 1.0:
+        return None
+    dot = east_in * east_out + north_in * north_out
+    cross = east_in * north_out - north_in * east_out
+    return math.degrees(math.atan2(cross, dot))
+
+
 def turn_count(H: nx.Graph, loop: Sequence[int]) -> int:
     """Corners a runner takes. A heading change under TURN_ANGLE_DEG is not a turn."""
     coords = [(H.nodes[node]["y"], H.nodes[node]["x"]) for node in loop[:-1]]
@@ -603,17 +619,36 @@ def turn_count(H: nx.Graph, loop: Sequence[int]) -> int:
         lat0, lon0 = coords[(i - 1) % count]
         lat1, lon1 = coords[i]
         lat2, lon2 = coords[(i + 1) % count]
-        east_in, north_in = _leg_m(lat0, lon0, lat1, lon1)
-        east_out, north_out = _leg_m(lat1, lon1, lat2, lon2)
-        if east_in * east_in + north_in * north_in < 1.0:
-            continue
-        if east_out * east_out + north_out * north_out < 1.0:
-            continue
-        dot = east_in * east_out + north_in * north_out
-        cross = east_in * north_out - north_in * east_out
-        if abs(math.degrees(math.atan2(cross, dot))) >= TURN_ANGLE_DEG:
+        change = _heading_change_deg(lat0, lon0, lat1, lon1, lat2, lon2)
+        if change is not None and abs(change) >= TURN_ANGLE_DEG:
             turns += 1
     return turns
+
+
+def sharp_turns_clustered(H: nx.Graph, loop: Sequence[int]) -> bool:
+    """True when two corners of SHARP_TURN_DEG or more lie under MIN_TURN_GAP_M apart.
+
+    The gap is measured along the path, including across the point where the loop closes.
+    """
+    coords = [(H.nodes[node]["y"], H.nodes[node]["x"]) for node in loop[:-1]]
+    count = len(coords)
+    if count < 3:
+        return False
+    along: list[float] = []
+    travelled = 0.0
+    for i in range(count):
+        lat1, lon1 = coords[i]
+        lat0, lon0 = coords[(i - 1) % count]
+        lat2, lon2 = coords[(i + 1) % count]
+        change = _heading_change_deg(lat0, lon0, lat1, lon1, lat2, lon2)
+        if change is not None and abs(change) >= SHARP_TURN_DEG:
+            along.append(travelled)
+        travelled += haversine_m(lat1, lon1, lat2, lon2)
+    if len(along) < 2:
+        return False
+    gaps = [b - a for a, b in zip(along, along[1:], strict=False)]
+    gaps.append(travelled - along[-1] + along[0])
+    return min(gaps) < MIN_TURN_GAP_M
 
 
 def loop_crosses_road(
@@ -679,9 +714,10 @@ def find_loops(
     """Return up to max_loops distinct cycles within target_m ± epsilon_m.
 
     The graph is reduced to junctions joined by chains. Cycles are grown from the lowest
-    junction with a bounded beam. A loop that crosses a vehicle road is dropped. Fewer
-    turns come first, then park loops, then closer lengths. A loop is skipped when more
-    than max_overlap of its length is shared with a loop already kept.
+    junction with a bounded beam. A loop that crosses a vehicle road is dropped, and so
+    is one whose sharp corners sit a few metres apart. Fewer turns come first, then park
+    loops, then closer lengths. A loop is skipped when more than max_overlap of its
+    length is shared with a loop already kept.
     """
     lo, hi = target_m - epsilon_m, target_m + epsilon_m
     raw = contract_chains(H)
@@ -707,10 +743,14 @@ def find_loops(
     arms = road_arms or {}
     ranked: list[tuple[int, int, float, float, tuple[tuple[int, int], ...], list[int]]] = []
     crossed = 0
+    clustered = 0
     for length, steps in found.values():
         nodes = expand(chains, steps)
         if arms and loop_crosses_road(H, nodes, arms):
             crossed += 1
+            continue
+        if sharp_turns_clustered(H, nodes):
+            clustered += 1
             continue
         park_rank = 0 if loop_in_park(H, nodes, park_areas) else 1
         ranked.append(
@@ -718,6 +758,7 @@ def find_loops(
         )
     if verbose:
         print(f"Loops dropped (cross a road): {crossed}")
+        print(f"Loops dropped (sharp turns within {MIN_TURN_GAP_M:.0f} m): {clustered}")
     ranked.sort(key=lambda item: (item[0], item[1], item[2], item[3]))
 
     kept: list[tuple[list[int], float]] = []

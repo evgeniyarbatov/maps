@@ -53,12 +53,87 @@ def add_ring(
         H.add_edge(a, b, length=edge_m, grade=grade)
 
 
+def metres(north_m: float, east_m: float) -> tuple[float, float]:
+    return north_m / M_PER_DEG, east_m / M_PER_DEG
+
+
 def load_osm(body: str, roads: list[fl.RoadSeg] | None = None) -> nx.MultiDiGraph:
     xml = f'<?xml version="1.0" encoding="UTF-8"?>\n<osm version="0.6">\n{body}</osm>\n'
     with tempfile.NamedTemporaryFile("w", suffix=".osm") as handle:
         handle.write(xml)
         handle.flush()
         return fl.load_footpath_graph(Path(handle.name), 10.77, 106.69, 5_000.0, roads or ())
+
+
+class TurnSpacingTest(unittest.TestCase):
+    def test_sharp_pair_across_the_join_is_clustered(self) -> None:
+        graph = nx.Graph()
+        add_ring(
+            graph,
+            [1, 2, 3, 4, 5, 6],
+            [
+                metres(*point)
+                for point in ((0, 0), (0, 200), (200, 200), (200, -200), (5, -200), (5, 0))
+            ],
+            100.0,
+        )
+        self.assertTrue(fl.sharp_turns_clustered(graph, [1, 2, 3, 4, 5, 6, 1]))
+
+    def test_mild_bends_within_15m_are_kept(self) -> None:
+        graph = nx.Graph()
+        bend = math.radians(40)
+        second = math.radians(80)
+        add_ring(
+            graph,
+            [1, 2, 3, 4, 5],
+            [
+                metres(0, 0),
+                metres(0, 100),
+                metres(5 * math.sin(bend), 100 + 5 * math.cos(bend)),
+                metres(
+                    5 * math.sin(bend) + 80 * math.sin(second),
+                    100 + 5 * math.cos(bend) + 80 * math.cos(second),
+                ),
+                metres(200, 0),
+            ],
+            100.0,
+        )
+        self.assertFalse(fl.sharp_turns_clustered(graph, [1, 2, 3, 4, 5, 1]))
+
+    def test_close_sharp_turns_are_dropped(self) -> None:
+        graph = nx.Graph()
+        add_ring(
+            graph,
+            [1, 2, 3, 4, 5, 6],
+            [
+                metres(*point)
+                for point in ((0, 0), (0, 200), (5, 200), (5, 400), (200, 400), (200, 0))
+            ],
+            880 / 6,
+        )
+        add_ring(
+            graph,
+            [7, 8, 9, 10],
+            [metres(*point) for point in ((1000, 1000), (1000, 1200), (1200, 1200), (1200, 1000))],
+            200.0,
+        )
+        loops = fl.find_loops(graph, 883.0, 100.0, 10, 1.0)
+        self.assertEqual([length for _, length in loops], [800.0])
+
+    def test_sharp_turns_beyond_15m_are_kept(self) -> None:
+        graph = nx.Graph()
+        add_ring(
+            graph,
+            [1, 2, 3, 4, 5, 6],
+            [
+                metres(*point)
+                for point in ((0, 0), (0, 200), (22, 200), (22, 400), (200, 400), (200, 0))
+            ],
+            880 / 6,
+        )
+        loops = fl.find_loops(graph, 883.0, 100.0, 10, 1.0)
+        self.assertEqual(len(loops), 1)
+        self.assertAlmostEqual(loops[0][1], 880.0)
 
 
 class RoadCrossingTest(unittest.TestCase):

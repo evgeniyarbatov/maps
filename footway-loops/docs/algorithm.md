@@ -1,6 +1,6 @@
 # How the loop search works
 
-The goal: find simple cycles (no repeated node) in the footpath network inside a circle whose length is within `TARGET ± EPSILON`, leave out any loop that crosses a vehicle road, prefer the ones inside parks, and keep those that aren't near-duplicates of each other.
+The goal: find simple cycles (no repeated node) in the footpath network inside a circle whose length is within `TARGET ± EPSILON`, leave out any loop that crosses a vehicle road or folds two sharp corners together, prefer the ones inside parks, and keep those that aren't near-duplicates of each other.
 
 ## Pipeline
 
@@ -14,7 +14,7 @@ country .osm.pbf
   → undirected simple graph → 2-core
   → chain contraction (junction graph)
   → bounded beam cycle search
-  → drop loops that cross a vehicle road
+  → drop loops that cross a vehicle road, or whose sharp corners are under 15 m apart
   → fewest turns, then park loops, then |length − target|; drop overlapping loops
   → loops.kml + gpx/loop_NNN_<len>m.gpx
 ```
@@ -67,7 +67,11 @@ Work per start is capped by junctions × length bands × 24. On the 4×4 test gr
 
 ## 6. Parks, rank, and de-duplicate
 
-A candidate is dropped when the walk steps from one side of a vehicle road to the other at the same grade. At a loop node that also lies on a road, both neighbouring points must sit at least 1 m off that road's line and on opposite sides. A corner, where one leg runs along the road, stays. A crossing drawn through the road's own node does not intersect the road segment, which is why this second check exists. The drop happens before the top 10 are chosen, so another loop can take the place.
+A candidate is dropped when the walk steps from one side of a vehicle road to the other at the same grade. At a loop node that also lies on a road, both neighbouring points must sit at least 1 m off that road's line and on opposite sides. A corner, where one leg runs along the road, stays. A crossing drawn through the road's own node does not intersect the road segment, which is why this second check exists.
+
+A candidate is also dropped when two heading changes of at least 60° lie under 15 m apart along the path, including across the point where the loop closes. A bend under 60° can sit next to a corner.
+
+Both drops happen before the top 10 are chosen, so another loop can take the place.
 
 Polygons are read from `parks.osm`:
 
