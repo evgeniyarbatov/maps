@@ -11,10 +11,7 @@ Requires Python 3.11+, [`uv`](https://docs.astral.sh/uv/) and `osmium-tool`.
 ```bash
 git clone https://github.com/evgeniyarbatov/maps.git
 cd maps/gpx-osm-missing-paths
-make setup
-make country                        # Vietnam PBF → ~/.cache/osm (prints manual download URL if unavailable)
-
-make from-dir GPX_DIR=~/my-runs     # whole pipeline on a folder of .gpx files
+make from-dir GPX_DIR=~/my-runs     # setup, Vietnam PBF → ~/.cache/osm, then the whole pipeline
 open ~/Documents/data/gpx-osm-missing-paths/clusters/
 ```
 

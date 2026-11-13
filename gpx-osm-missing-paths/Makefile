@@ -14,9 +14,10 @@ COUNTRY_OSM_FILE ?= $(notdir $(OSM_URL))
 COUNTRY_OSM_PATH := $(OSM_CACHE_DIR)/$(COUNTRY_OSM_FILE)
 
 country osm-country-fetch:
-	@echo "error: '$@' needs evgeniyarbatov/dotfiles (private helper); not found at $(DOTFILES_MK)." >&2
-	@echo "Fetch manually: download $(OSM_URL) into $(COUNTRY_OSM_PATH), then retry." >&2
-	@exit 1
+	@test -f "$(COUNTRY_OSM_PATH)" || { \
+		echo "error: '$@' needs evgeniyarbatov/dotfiles (private helper); not found at $(DOTFILES_MK)." >&2; \
+		echo "Fetch manually: download $(OSM_URL) into $(COUNTRY_OSM_PATH), then retry." >&2; \
+		exit 1; }
 endif
 
 .DEFAULT_GOAL := help
@@ -93,8 +94,9 @@ extract: osm-check ## JOSM bundles (missing clusters only)
 
 pipeline: gpx city process cluster filter-missing name extract ## Full pipeline (fetch GPX + city clip + missing-path bundles)
 
-from-dir: ## Full pipeline on your own GPX folder: make from-dir GPX_DIR=<dir>
+from-dir: ## Setup + country PBF + full pipeline on your own GPX folder: make from-dir GPX_DIR=<dir>
 	@test -n "$(GPX_DIR)" || (echo "usage: make from-dir GPX_DIR=<dir with .gpx files>" >&2; exit 1)
+	@$(MAKE) --no-print-directory setup country
 	@$(MAKE) --no-print-directory city process cluster filter-missing name extract GPX_DIR="$(GPX_DIR)"
 
 test: setup ## Run pytest with coverage
