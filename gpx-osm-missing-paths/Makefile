@@ -34,7 +34,7 @@ CITY_OSM_PBF := $(OSM_DIR)/$(CITY).osm.pbf
 CITY_OSM := $(OSM_DIR)/$(CITY).osm
 
 .PHONY: help setup run country city osm-check \
-	gpx process cluster filter-missing name extract pipeline \
+	gpx process cluster filter-missing name extract pipeline from-dir \
 	test lint
 
 # Raw GPX source: the GeoParquet export repo set by GPX_DATA_REPO_URL in .env.
@@ -92,6 +92,10 @@ extract: osm-check ## JOSM bundles (missing clusters only)
 	OSM_PBF_PATH=$(CITY_OSM_PBF) uv run gpx-osm extract
 
 pipeline: gpx city process cluster filter-missing name extract ## Full pipeline (fetch GPX + city clip + missing-path bundles)
+
+from-dir: ## Full pipeline on your own GPX folder: make from-dir GPX_DIR=<dir>
+	@test -n "$(GPX_DIR)" || (echo "usage: make from-dir GPX_DIR=<dir with .gpx files>" >&2; exit 1)
+	@$(MAKE) --no-print-directory city process cluster filter-missing name extract GPX_DIR="$(GPX_DIR)"
 
 test: setup ## Run pytest with coverage
 	uv run pytest

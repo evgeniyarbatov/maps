@@ -13,6 +13,7 @@ All commands run via `uv run gpx-osm <command>`, or the matching `make <target>`
 | `gpx-osm name` | `make name` | POI-based human names for missing clusters → `$OUTPUT_DIR/named_clusters.geojson` |
 | `gpx-osm extract` | `make extract` | Write `$CLUSTERS_DIR/{slug}/` JOSM bundles |
 | `gpx-osm pipeline` | `make pipeline` | `city` clip, then all of the above in order |
+| — | `make from-dir GPX_DIR=<dir>` | `city` clip, then `process` → `extract` on your own GPX folder (no fetch) |
 | `gpx-osm osm-paths` | — | Print resolved country/city/active OSM PBF paths (debug) |
 
 Each stage after `process` reads and rewrites `$OUTPUT_DIR/clusters_state.json` — the full working
@@ -104,10 +105,7 @@ make country URL=https://download.geofabrik.de/asia/thailand-latest.osm.pbf
 
 ```bash
 make setup
-mkdir -p ~/Documents/data/gpx-osm-missing-paths/gpx
-cp samples/*.gpx ~/Documents/data/gpx-osm-missing-paths/gpx/   # samples/ is committed; GPX_DIR is not
-make city                           # requires the Vietnam PBF in ~/.cache/osm
-make process cluster filter-missing name extract
+make from-dir GPX_DIR=samples       # requires the Vietnam PBF in ~/.cache/osm
 ls ~/Documents/data/gpx-osm-missing-paths/clusters/
 ```
 

@@ -10,19 +10,15 @@ Requires Python 3.11+, [`uv`](https://docs.astral.sh/uv/) and `osmium-tool`.
 
 ```bash
 git clone https://github.com/evgeniyarbatov/maps.git
-cd gpx-osm-missing-paths
+cd maps/gpx-osm-missing-paths
 make setup
-cp env.example .env                # optional; defaults target HCMC
+make country                        # Vietnam PBF → ~/.cache/osm (prints manual download URL if unavailable)
 
-make country                       # Vietnam PBF → ~/.cache/osm (prints manual download URL if unavailable)
-make city                          # clip to osm/hcm.poly
-
-# Drop .gpx files into ~/Documents/data/gpx-osm-missing-paths/gpx/, or fetch from a parquet track repo:
-make gpx LAT=<lat> LON=<lon> RADIUS_KM=5   # filter is optional
-
-make pipeline
+make from-dir GPX_DIR=~/my-runs     # whole pipeline on a folder of .gpx files
 open ~/Documents/data/gpx-osm-missing-paths/clusters/
 ```
+
+`.env` is optional (`cp env.example .env`); defaults target HCMC. To fetch GPX from a parquet track repo instead, use `make pipeline` (optionally `LAT=<lat> LON=<lon> RADIUS_KM=5`).
 
 In JOSM, open a cluster's `.osm`, add its `gpx/*.gpx` as reference layers, and draw the path.
 
